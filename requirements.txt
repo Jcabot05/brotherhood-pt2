@@ -1,0 +1,5 @@
+fastapi[standard]==0.139.0
+pydantic[email]==2.12.4
+python-dotenv==1.2.2
+sqlalchemy==2.0.44
+psycopg[binary]==3.2.12

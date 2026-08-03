@@ -44,9 +44,10 @@ app/
   models.py          Esquemas de validación de entrada y salida (Pydantic)
   routers/           Un módulo por recurso: auth, clientes, barberos, servicios, citas
 db/
-  schema.sql                 Creación del esquema `daw`, tablas, índices y permisos
-  migracion_01_usuarios.sql  Tabla de usuarios y vínculo con cliente (Proyecto 04)
-  rollback.sql               Reversión completa de los cambios en la base de datos
+  schema.sql                        Creación del esquema `daw`, tablas, índices y permisos
+  migracion_01_usuarios.sql         Tabla de usuarios y vínculo con cliente (Proyecto 04)
+  migracion_02_servicio_activo.sql  Retiro lógico de servicios del catálogo (Proyecto 04)
+  rollback.sql                      Reversión completa de los cambios en la base de datos
 tests/
   prueba_endpoints.py  Pruebas de extremo a extremo contra la API
 docs/                Documentación de las fases del proyecto
@@ -82,8 +83,9 @@ La API se conecta con el rol `daw_api`, cuyos privilegios se limitan al esquema 
 
 ### Base de datos
 
-Si el esquema aún no existe, ejecute `db/schema.sql` y después `db/migracion_01_usuarios.sql`
-sobre la base de datos. Para deshacer todos los cambios, `db/rollback.sql`.
+Si el esquema aún no existe, ejecute en orden `db/schema.sql`,
+`db/migracion_01_usuarios.sql` y `db/migracion_02_servicio_activo.sql` sobre la base de datos.
+Para deshacer todos los cambios, `db/rollback.sql`.
 
 ## Autenticación
 
@@ -114,6 +116,27 @@ Decisiones de seguridad:
   incorrecta, para no revelar qué correos están registrados (RN-20).
 - El rol administrador no se puede obtener desde la API: `POST /auth/registro` crea siempre
   cuentas con rol `cliente` (RN-04).
+
+## Catálogo de servicios (HU-01)
+
+El catálogo es información comercial abierta: cualquier visitante puede consultarlo sin
+credenciales antes de decidir si se registra. La administración, en cambio, exige rol
+administrador.
+
+| Endpoint | Acceso | Descripción |
+|---|---|---|
+| `GET /servicios/` | Público | Lista los servicios disponibles |
+| `GET /servicios/{id}` | Público | Consulta un servicio por identificador |
+| `POST /servicios/` | Administrador | Registra un servicio |
+| `PUT /servicios/{id}` | Administrador | Actualiza un servicio |
+| `DELETE /servicios/{id}` | Administrador | Retira el servicio del catálogo |
+| `POST /servicios/{id}/reactivar` | Administrador | Lo reincorpora al catálogo |
+
+`DELETE` **no borra el registro**: marca el servicio como inactivo (RN-16), de modo que
+desaparece del listado público pero las citas que lo referencian conservan su historial. El
+listado admite `?incluir_inactivos=true` para la administración del catálogo.
+
+Un catálogo sin resultados devuelve `200` con un arreglo vacío, nunca un error.
 
 ## Ejecución
 

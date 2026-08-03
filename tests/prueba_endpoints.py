@@ -3,19 +3,56 @@
 Ejecuta un recorrido completo sobre la API en marcha y verifica que cada
 requisito funcional responda con el código HTTP esperado.
 
+Desde el Proyecto 04 la administración del catálogo exige rol administrador
+(RN-04), de modo que las operaciones de escritura sobre servicios viajan
+firmadas con el token de una cuenta administradora.
+
 Uso:
     python tests/prueba_endpoints.py                      # contra localhost
     python tests/prueba_endpoints.py https://mi-api.app   # contra el despliegue
+
+Variables de entorno:
+    ADMIN_CORREO, ADMIN_CONTRASENA   credenciales de la cuenta administradora
 """
 
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
 
+# Las credenciales no se versionan: se leen del entorno o del archivo .env.
+ADMIN_CORREO = os.getenv("ADMIN_CORREO", "")
+ADMIN_CONTRASENA = os.getenv("ADMIN_CONTRASENA", "")
+
 resultados: list[tuple[str, str, bool, str]] = []
+
+
+def token_de_administrador(cliente: httpx.Client) -> str:
+    """Inicia sesión con la cuenta administradora y devuelve su token."""
+    if not ADMIN_CORREO or not ADMIN_CONTRASENA:
+        raise SystemExit(
+            "Faltan las credenciales de administrador. Defina ADMIN_CORREO y "
+            "ADMIN_CONTRASENA en el archivo .env o como variables de entorno. "
+            "Deben corresponder a una cuenta con rol `admin`."
+        )
+
+    respuesta = cliente.post(
+        "/auth/login",
+        json={"correo": ADMIN_CORREO, "contrasena": ADMIN_CONTRASENA},
+    )
+    if respuesta.status_code != 200:
+        raise SystemExit(
+            "No se pudo iniciar sesión como administrador "
+            f"({respuesta.status_code}). Defina ADMIN_CORREO y ADMIN_CONTRASENA "
+            "con las credenciales de una cuenta con rol `admin`."
+        )
+    return respuesta.json()["token_acceso"]
 
 
 def verificar(requisito: str, descripcion: str, esperado: int, respuesta: httpx.Response):
@@ -30,6 +67,9 @@ def main() -> int:
     horario = (datetime.now(timezone.utc) + timedelta(days=3)).replace(
         minute=0, second=0, microsecond=0
     )
+
+    # La administración del catálogo exige rol administrador (RN-04).
+    admin = {"Authorization": f"Bearer {token_de_administrador(cliente)}"}
 
     # --- RF-01: gestión de clientes -------------------------------------
     r = verificar(
@@ -96,6 +136,7 @@ def main() -> int:
         cliente.post(
             "/servicios/",
             json={"nombre": "Servicio de Prueba", "precio": 15.0, "duracion_min": 30},
+            headers=admin,
         ),
     )
     id_servicio = r.json()["id_servicio"]
@@ -107,6 +148,7 @@ def main() -> int:
         cliente.post(
             "/servicios/",
             json={"nombre": "Precio Malo", "precio": -5, "duracion_min": 30},
+            headers=admin,
         ),
     )
 
@@ -201,9 +243,12 @@ def main() -> int:
     verificar("RF-08", "Cancelar una cita", 200, cliente.delete(f"/citas/{id_cita}"))
 
     # --- Limpieza de los datos de prueba ---------------------------------
+    # El servicio no se borra: desde el Proyecto 04, DELETE lo retira del
+    # catálogo marcándolo como inactivo para preservar el historial de citas
+    # (RN-16). Queda fuera del listado público, que es el efecto buscado.
     cliente.delete(f"/clientes/{id_cliente}")
     cliente.delete(f"/barberos/{id_barbero}")
-    cliente.delete(f"/servicios/{id_servicio}")
+    cliente.delete(f"/servicios/{id_servicio}", headers=admin)
     cliente.close()
 
     # --- Informe ---------------------------------------------------------

@@ -39,6 +39,7 @@ drop policy if exists daw_cliente_acceso_api  on daw.cliente;
 drop policy if exists daw_barbero_acceso_api  on daw.barbero;
 drop policy if exists daw_servicio_acceso_api on daw.servicio;
 drop policy if exists daw_cita_acceso_api     on daw.cita;
+drop policy if exists daw_usuario_acceso_api  on daw.usuario;
 
 revoke all on all tables in schema daw from daw_api;
 revoke all on all sequences in schema daw from daw_api;
@@ -57,8 +58,9 @@ drop role if exists daw_api;
 -- ---------------------------------------------------------------------
 -- 2. Eliminar el esquema academico completo.
 --    CASCADE arrastra: daw.cliente, daw.barbero, daw.servicio, daw.cita,
---    sus indices (incl. cita_barbero_horario_unico), sus politicas RLS
---    y sus secuencias de identidad.
+--    daw.usuario (Proyecto 04), sus indices (incl. cita_barbero_horario_unico
+--    y usuario_correo_idx), sus politicas RLS, sus claves foraneas
+--    (incl. cliente.id_usuario) y sus secuencias de identidad.
 -- ---------------------------------------------------------------------
 drop schema if exists daw cascade;
 

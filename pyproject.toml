@@ -13,6 +13,8 @@ dependencies = [
     "python-dotenv",
     "sqlalchemy",
     "psycopg[binary]",
+    "pyjwt",
+    "bcrypt",
 ]
 
 [tool.fastapi]

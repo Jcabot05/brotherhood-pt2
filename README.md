@@ -38,12 +38,15 @@ La validación de disponibilidad de barbero (RF-07) se incorpora como regla de n
 main.py              Aplicación FastAPI: routers y manejo de errores
 app/
   database.py        Conexión a PostgreSQL (search_path limitado a `daw`)
+  seguridad.py       Hash de contraseñas (bcrypt) y tokens de acceso (JWT)
+  dependencias.py    Comprobaciones de autenticación y permisos para los routers
   tablas.py          Tablas del esquema `daw` para SQLAlchemy
   models.py          Esquemas de validación de entrada y salida (Pydantic)
-  routers/           Un módulo por recurso: clientes, barberos, servicios, citas
+  routers/           Un módulo por recurso: auth, clientes, barberos, servicios, citas
 db/
-  schema.sql         Creación del esquema `daw`, tablas, índices y permisos
-  rollback.sql       Reversión completa de los cambios en la base de datos
+  schema.sql                 Creación del esquema `daw`, tablas, índices y permisos
+  migracion_01_usuarios.sql  Tabla de usuarios y vínculo con cliente (Proyecto 04)
+  rollback.sql               Reversión completa de los cambios en la base de datos
 tests/
   prueba_endpoints.py  Pruebas de extremo a extremo contra la API
 docs/                Documentación de las fases del proyecto
@@ -79,8 +82,38 @@ La API se conecta con el rol `daw_api`, cuyos privilegios se limitan al esquema 
 
 ### Base de datos
 
-Si el esquema aún no existe, ejecute `db/schema.sql` sobre la base de datos. Para deshacer los
-cambios, `db/rollback.sql`.
+Si el esquema aún no existe, ejecute `db/schema.sql` y después `db/migracion_01_usuarios.sql`
+sobre la base de datos. Para deshacer todos los cambios, `db/rollback.sql`.
+
+## Autenticación
+
+El acceso se resuelve con tokens JWT. La cuenta se crea en `POST /auth/registro`, que registra el
+usuario junto con su ficha de cliente, y `POST /auth/login` devuelve el token con el que se firman
+las peticiones posteriores.
+
+| Endpoint | Acceso | Descripción |
+|---|---|---|
+| `POST /auth/registro` | Público | Crea una cuenta de cliente y devuelve un token. |
+| `POST /auth/login` | Público | Verifica las credenciales y emite un token. |
+| `GET /auth/yo` | Autenticado | Devuelve los datos de la cuenta dueña del token. |
+
+El token viaja en la cabecera `Authorization`:
+
+```
+Authorization: Bearer <token>
+```
+
+Decisiones de seguridad:
+
+- Las contraseñas se guardan solo como hash bcrypt, con sal aleatoria por contraseña (RN-05). El
+  sistema no almacena ni puede recuperar el texto plano.
+- El token tiene vigencia limitada, configurable con `JWT_MINUTOS_VIGENCIA` (RN-06). Una vez
+  expirado, la API responde `401` y obliga a autenticarse de nuevo.
+- El secreto de firma se lee de `JWT_SECRETO` y nunca se versiona.
+- El inicio de sesión responde lo mismo ante un correo inexistente que ante una contraseña
+  incorrecta, para no revelar qué correos están registrados (RN-20).
+- El rol administrador no se puede obtener desde la API: `POST /auth/registro` crea siempre
+  cuentas con rol `cliente` (RN-04).
 
 ## Ejecución
 

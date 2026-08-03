@@ -116,3 +116,56 @@ class Cita(BaseModel):
     fecha_hora: datetime
     estado: EstadoCita
     creado_en: datetime
+
+
+# --------------------------------------------------------------------
+# Autenticación (Proyecto 04 — RN-02 a RN-06)
+# --------------------------------------------------------------------
+
+
+class RolUsuario(str, Enum):
+    """Roles reconocidos por el sistema (RN-04)."""
+
+    cliente = "cliente"
+    admin = "admin"
+
+
+class RegistroUsuario(BaseModel):
+    """Alta de una cuenta de acceso junto con su ficha de cliente.
+
+    El registro crea el usuario y el cliente asociado en una sola operación,
+    de modo que quien se registra queda en condiciones de agendar (HU-02).
+    """
+
+    correo: EmailStr
+    contrasena: str = Field(min_length=8, max_length=72)
+    nombre: str = Field(min_length=1, max_length=120)
+    telefono: str = Field(min_length=7, max_length=20)
+
+
+class CredencialesAcceso(BaseModel):
+    correo: EmailStr
+    contrasena: str = Field(min_length=1, max_length=72)
+
+
+class Usuario(BaseModel):
+    """Datos públicos de una cuenta. Nunca incluye el hash de la contraseña."""
+
+    id_usuario: int
+    correo: EmailStr
+    rol: RolUsuario
+    activo: bool
+    creado_en: datetime
+
+
+class UsuarioAutenticado(Usuario):
+    """Cuenta junto con la ficha de cliente que le corresponde, si existe."""
+
+    id_cliente: int | None = None
+
+
+class TokenAcceso(BaseModel):
+    token_acceso: str
+    tipo_token: str = "bearer"
+    expira_en: int = Field(description="Vigencia del token en segundos.")
+    usuario: UsuarioAutenticado

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.routers import barberos, citas, clientes, servicios
+from app.routers import auth, barberos, citas, clientes, servicios
 
 app = FastAPI(
     title="TheBrotherhood — API de gestión de citas",
@@ -18,6 +18,7 @@ app = FastAPI(
     version="2.0.0",
 )
 
+app.include_router(auth.router)
 app.include_router(clientes.router)
 app.include_router(barberos.router)
 app.include_router(servicios.router)
@@ -63,7 +64,7 @@ def raiz():
     return {
         "mensaje": "API de gestión de citas — TheBrotherhood",
         "documentacion": "/docs",
-        "recursos": ["/clientes", "/barberos", "/servicios", "/citas"],
+        "recursos": ["/auth", "/clientes", "/barberos", "/servicios", "/citas"],
     }
 
 

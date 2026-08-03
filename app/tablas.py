@@ -91,6 +91,9 @@ class ServicioTabla(Base):
     nombre: Mapped[str] = mapped_column(Text, nullable=False)
     precio: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     duracion_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Retiro lógico del catálogo (RN-16): un servicio con citas asociadas no se
+    # elimina físicamente, para preservar el historial.
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     creado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

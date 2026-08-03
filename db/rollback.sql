@@ -58,9 +58,11 @@ drop role if exists daw_api;
 -- ---------------------------------------------------------------------
 -- 2. Eliminar el esquema academico completo.
 --    CASCADE arrastra: daw.cliente, daw.barbero, daw.servicio, daw.cita,
---    daw.usuario (Proyecto 04), sus indices (incl. cita_barbero_horario_unico
---    y usuario_correo_idx), sus politicas RLS, sus claves foraneas
---    (incl. cliente.id_usuario) y sus secuencias de identidad.
+--    daw.usuario (Proyecto 04), sus indices (incl. cita_barbero_horario_unico,
+--    usuario_correo_idx y servicio_activo_idx), sus politicas RLS, sus claves
+--    foraneas (incl. cliente.id_usuario), las columnas anadidas por el
+--    Proyecto 04 (cliente.id_usuario, servicio.activo) y sus secuencias
+--    de identidad.
 -- ---------------------------------------------------------------------
 drop schema if exists daw cascade;
 

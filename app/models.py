@@ -80,6 +80,10 @@ class ServicioActualizar(ServicioBase):
 
 class Servicio(ServicioBase):
     id_servicio: int
+    # RN-16: un servicio retirado del catálogo conserva su registro y queda
+    # marcado como inactivo. El alta y la edición no reciben este campo: se
+    # gobierna con DELETE (retirar) y con el endpoint de reactivación.
+    activo: bool
     creado_en: datetime
 
 

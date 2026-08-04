@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceder — TheBrotherhood</title>
+    <link rel="stylesheet" href="/app/estilos.css">
+</head>
+
+<body>
+    <header class="barra">
+        <div class="barra-contenido">
+            <a class="marca" href="/app/">The<span>Brotherhood</span></a>
+            <nav class="navegacion">
+                <a href="/app/">Servicios</a>
+                <a href="/app/agendar.html">Agendar cita</a>
+                <span id="estado-sesion"></span>
+            </nav>
+        </div>
+    </header>
+
+    <main class="contenido">
+        <div class="encabezado">
+            <h1>Acceder</h1>
+            <p>Necesita una cuenta para agendar una cita. Consultar el catálogo no la requiere.</p>
+        </div>
+
+        <div class="pestanas">
+            <button class="pestana activa" data-vista="login">Iniciar sesión</button>
+            <button class="pestana" data-vista="registro">Crear cuenta</button>
+        </div>
+
+        <div id="mensaje" class="mensaje oculto"></div>
+
+        <!-- Inicio de sesión -->
+        <form id="form-login" class="tarjeta formulario">
+            <div class="campo">
+                <label for="login-correo">Correo</label>
+                <input type="email" id="login-correo" required autocomplete="email">
+            </div>
+            <div class="campo">
+                <label for="login-contrasena">Contraseña</label>
+                <input type="password" id="login-contrasena" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="boton">Iniciar sesión</button>
+        </form>
+
+        <!-- Registro -->
+        <form id="form-registro" class="tarjeta formulario oculto">
+            <div class="campo">
+                <label for="reg-nombre">Nombre completo</label>
+                <input type="text" id="reg-nombre" required autocomplete="name">
+            </div>
+            <div class="campo">
+                <label for="reg-telefono">Teléfono</label>
+                <input type="tel" id="reg-telefono" required autocomplete="tel" minlength="7">
+            </div>
+            <div class="campo">
+                <label for="reg-correo">Correo</label>
+                <input type="email" id="reg-correo" required autocomplete="email">
+            </div>
+            <div class="campo">
+                <label for="reg-contrasena">Contraseña</label>
+                <input type="password" id="reg-contrasena" required minlength="8"
+                       autocomplete="new-password">
+                <p class="ayuda">Mínimo 8 caracteres. Se almacena cifrada, nunca en texto plano.</p>
+            </div>
+            <button type="submit" class="boton">Crear cuenta</button>
+        </form>
+
+        <p class="nota">
+            La sesión se guarda solo mientras la pestaña siga abierta. El token tiene vigencia
+            limitada: al expirar, la API responde <code>401</code> y hay que acceder de nuevo.
+        </p>
+    </main>
+
+    <script src="/app/api.js"></script>
+    <script>
+        const cajaMensaje = document.getElementById('mensaje');
+        const formLogin = document.getElementById('form-login');
+        const formRegistro = document.getElementById('form-registro');
+
+        // Destino tras acceder: vuelve a donde el usuario quería ir.
+        const destino = new URLSearchParams(window.location.search).get('destino')
+            || '/app/agendar.html';
+
+        // --- Cambio de pestaña -------------------------------------------
+        for (const pestana of document.querySelectorAll('.pestana')) {
+            pestana.addEventListener('click', () => {
+                document.querySelectorAll('.pestana').forEach(p => p.classList.remove('activa'));
+                pestana.classList.add('activa');
+
+                const esLogin = pestana.dataset.vista === 'login';
+                formLogin.classList.toggle('oculto', !esLogin);
+                formRegistro.classList.toggle('oculto', esLogin);
+                ocultarMensaje(cajaMensaje);
+            });
+        }
+
+        function bloquear(formulario, bloqueado, textoOcupado) {
+            const boton = formulario.querySelector('button[type="submit"]');
+            boton.disabled = bloqueado;
+            if (bloqueado) {
+                boton.dataset.textoOriginal = boton.textContent;
+                boton.textContent = textoOcupado;
+            } else if (boton.dataset.textoOriginal) {
+                boton.textContent = boton.dataset.textoOriginal;
+            }
+        }
+
+        function entrar(datos) {
+            Sesion.guardar(datos);
+            mostrarMensaje(cajaMensaje, 'exito', 'Acceso correcto. Redirigiendo…');
+            setTimeout(() => { window.location.href = destino; }, 700);
+        }
+
+        // --- Iniciar sesión ----------------------------------------------
+        formLogin.addEventListener('submit', async evento => {
+            evento.preventDefault();
+            ocultarMensaje(cajaMensaje);
+            bloquear(formLogin, true, 'Verificando…');
+
+            try {
+                const datos = await pedir('POST', '/auth/login', {
+                    correo: document.getElementById('login-correo').value.trim(),
+                    contrasena: document.getElementById('login-contrasena').value
+                });
+                entrar(datos);
+            } catch (error) {
+                mostrarError(cajaMensaje, error);
+                bloquear(formLogin, false);
+            }
+        });
+
+        // --- Crear cuenta -------------------------------------------------
+        formRegistro.addEventListener('submit', async evento => {
+            evento.preventDefault();
+            ocultarMensaje(cajaMensaje);
+            bloquear(formRegistro, true, 'Creando la cuenta…');
+
+            try {
+                const datos = await pedir('POST', '/auth/registro', {
+                    nombre: document.getElementById('reg-nombre').value.trim(),
+                    telefono: document.getElementById('reg-telefono').value.trim(),
+                    correo: document.getElementById('reg-correo').value.trim(),
+                    contrasena: document.getElementById('reg-contrasena').value
+                });
+                entrar(datos);
+            } catch (error) {
+                mostrarError(cajaMensaje, error);
+                bloquear(formRegistro, false);
+            }
+        });
+
+        // Si ya hay sesión abierta, no tiene sentido quedarse aquí.
+        if (Sesion.activa()) {
+            mostrarMensaje(
+                cajaMensaje,
+                'aviso',
+                `Ya hay una sesión abierta como ${Sesion.usuario().correo}.`
+            );
+        }
+    </script>
+</body>
+
+</html>

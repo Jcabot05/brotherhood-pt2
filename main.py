@@ -29,10 +29,15 @@ app.include_router(citas.router)
 def manejar_error_integridad(request: Request, exc: IntegrityError) -> JSONResponse:
     """Traduce las violaciones de restricciones a respuestas HTTP claras (RNF-05).
 
-    El índice único parcial `cita_barbero_horario_unico` protege la regla de
-    disponibilidad (RF-07) en la base de datos: si dos peticiones intentan agendar
-    el mismo horario a la vez, Postgres rechaza la segunda y aquí se devuelve un
-    409 en lugar de un error interno.
+    El índice único parcial `cita_barbero_horario_unico` cubre el caso de dos
+    peticiones simultáneas sobre la hora de inicio exacta: Postgres rechaza la
+    segunda y aquí se devuelve un 409 en lugar de un error interno.
+
+    El solapamiento parcial que exige RN-07 —una cita que empieza en mitad de
+    otra— lo verifica la API antes de insertar, comparando intervalos según la
+    duración del servicio. El índice no puede expresar esa condición sin la
+    extensión `btree_gist`, que no se instala en esta base de datos por tratarse
+    del proyecto de un cliente en operación.
     """
     codigo = getattr(getattr(exc, "orig", None), "sqlstate", None)
 

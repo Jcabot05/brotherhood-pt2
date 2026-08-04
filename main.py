@@ -1,8 +1,13 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from app.routers import auth, barberos, citas, clientes, servicios
+
+DIRECTORIO_WEB = Path(__file__).parent / "web"
 
 app = FastAPI(
     title="TheBrotherhood — API de gestión de citas",
@@ -69,6 +74,7 @@ def raiz():
     return {
         "mensaje": "API de gestión de citas — TheBrotherhood",
         "documentacion": "/docs",
+        "cliente_web": "/app/",
         "recursos": ["/auth", "/clientes", "/barberos", "/servicios", "/citas"],
     }
 
@@ -77,3 +83,13 @@ def raiz():
 def salud():
     """RNF-06: endpoint simple para comprobar que el servicio está en línea."""
     return {"estado": "ok"}
+
+
+# El cliente web se sirve desde la propia API, bajo el prefijo `/app`. Se monta
+# al final para que las rutas de los recursos tengan precedencia. `html=True`
+# resuelve `/app/` a `index.html`.
+app.mount(
+    "/app",
+    StaticFiles(directory=DIRECTORIO_WEB, html=True),
+    name="cliente-web",
+)

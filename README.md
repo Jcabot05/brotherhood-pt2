@@ -35,7 +35,13 @@ La validación de disponibilidad de barbero (RF-07) se incorpora como regla de n
 ## Estructura
 
 ```
-main.py              Aplicación FastAPI: routers y manejo de errores
+main.py              Aplicación FastAPI: routers, manejo de errores y cliente web
+web/
+  index.html         Catálogo público de servicios (HU-01)
+  login.html         Registro e inicio de sesión
+  agendar.html       Formulario de cita y listado de citas propias (HU-02)
+  api.js             Cliente de la API, sesión y traducción de errores HTTP
+  estilos.css        Hoja de estilos, sin dependencias externas
 app/
   database.py        Conexión a PostgreSQL (search_path limitado a `daw`)
   seguridad.py       Hash de contraseñas (bcrypt) y tokens de acceso (JWT)
@@ -184,6 +190,25 @@ fastapi dev main.py
 
 La API queda en `http://127.0.0.1:8000` y la documentación interactiva en
 `http://127.0.0.1:8000/docs`.
+
+## Cliente web
+
+La misma aplicación sirve un cliente web en `http://127.0.0.1:8000/app/`, de modo que no hace
+falta levantar un segundo servidor ni ejecutar un paso de construcción.
+
+| Página | Ruta | Acceso |
+|---|---|---|
+| Catálogo de servicios | `/app/` | Público |
+| Registro e inicio de sesión | `/app/login.html` | Público |
+| Agendar cita y ver las propias | `/app/agendar.html` | Requiere sesión |
+
+Está escrito en HTML, CSS y JavaScript sin dependencias externas: no usa CDN ni paquetes, así que
+funciona sin conexión mientras la API esté en marcha.
+
+El token se guarda en `sessionStorage`, de modo que la sesión termina al cerrar la pestaña. Los
+errores de la API se muestran con su código y un mensaje legible: `401` invita a acceder de nuevo,
+`403` explica la falta de permisos, `409` describe el conflicto de horario y `422` enumera los
+campos inválidos.
 
 ## Pruebas
 

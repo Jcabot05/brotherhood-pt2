@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar una cita — TheBrotherhood</title>
+    <link rel="stylesheet" href="/app/estilos.css">
+</head>
+
+<body>
+    <header class="barra">
+        <div class="barra-contenido">
+            <a class="marca" href="/app/">The<span>Brotherhood</span></a>
+            <nav class="navegacion">
+                <a href="/app/">Servicios</a>
+                <a href="/app/agendar.html" class="activo">Agendar cita</a>
+                <span id="estado-sesion"></span>
+            </nav>
+        </div>
+    </header>
+
+    <main class="contenido">
+        <div class="encabezado">
+            <h1>Agendar una cita</h1>
+            <p>Elija barbero, servicio y horario. La cita queda a su nombre.</p>
+        </div>
+
+        <div id="mensaje" class="mensaje oculto"></div>
+
+        <!-- Visitante sin sesión -->
+        <section id="sin-sesion" class="vacio oculto">
+            <p>Necesita iniciar sesión para agendar una cita.</p>
+            <a class="boton" href="/app/login.html?destino=/app/agendar.html"
+               style="display:inline-block;text-decoration:none;margin-top:.75rem">
+                Acceder
+            </a>
+        </section>
+
+        <!-- Formulario -->
+        <section id="con-sesion" class="oculto">
+            <form id="form-cita" class="tarjeta formulario">
+                <div class="campo">
+                    <label for="barbero">Barbero</label>
+                    <select id="barbero" required></select>
+                </div>
+                <div class="campo">
+                    <label for="servicio">Servicio</label>
+                    <select id="servicio" required></select>
+                </div>
+                <div class="campo">
+                    <label for="fecha-hora">Fecha y hora</label>
+                    <input type="datetime-local" id="fecha-hora" required>
+                    <p class="ayuda">Debe ser una fecha futura. Se envía a la API en UTC.</p>
+                </div>
+                <button type="submit" class="boton">Agendar cita</button>
+            </form>
+
+            <h2 style="margin:2.25rem 0 .9rem;font-size:1.15rem">Mis citas</h2>
+            <div id="citas-vacio" class="vacio oculto">Todavía no tiene citas agendadas.</div>
+            <div id="citas-envoltura" class="tarjeta tabla-envoltura oculto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha y hora</th>
+                            <th>Servicio</th>
+                            <th>Barbero</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="citas-cuerpo"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <p class="nota">
+            HU-02 — <code>POST /citas/</code> exige un token válido. El cliente no viaja en el
+            cuerpo de la petición: la cita se asocia siempre al dueño del token, de modo que nadie
+            pueda agendar en nombre de otro.
+        </p>
+    </main>
+
+    <script src="/app/api.js"></script>
+    <script>
+        const cajaMensaje = document.getElementById('mensaje');
+        const seccionSinSesion = document.getElementById('sin-sesion');
+        const seccionConSesion = document.getElementById('con-sesion');
+        const formCita = document.getElementById('form-cita');
+        const selectBarbero = document.getElementById('barbero');
+        const selectServicio = document.getElementById('servicio');
+        const campoFecha = document.getElementById('fecha-hora');
+
+        const nombresServicio = new Map();
+        const nombresBarbero = new Map();
+
+        /* La API devuelve y espera UTC (RN-17); el campo del formulario trabaja
+           en hora local, de modo que la conversión ocurre aquí. */
+        function aIsoUtc(valorLocal) {
+            return new Date(valorLocal).toISOString();
+        }
+
+        function minimoLocal() {
+            const ahora = new Date(Date.now() + 60 * 60 * 1000);
+            const desfase = ahora.getTimezoneOffset() * 60000;
+            return new Date(ahora - desfase).toISOString().slice(0, 16);
+        }
+
+        async function cargarOpciones() {
+            const [barberos, servicios] = await Promise.all([
+                pedir('GET', '/barberos/'),
+                pedir('GET', '/servicios/')
+            ]);
+
+            selectBarbero.innerHTML = '';
+            for (const barbero of barberos) {
+                nombresBarbero.set(barbero.id_barbero, barbero.nombre);
+                const opcion = document.createElement('option');
+                opcion.value = barbero.id_barbero;
+                opcion.textContent = barbero.especialidad
+                    ? `${barbero.nombre} — ${barbero.especialidad}`
+                    : barbero.nombre;
+                selectBarbero.appendChild(opcion);
+            }
+
+            selectServicio.innerHTML = '';
+            for (const servicio of servicios) {
+                nombresServicio.set(servicio.id_servicio, servicio.nombre);
+                const opcion = document.createElement('option');
+                opcion.value = servicio.id_servicio;
+                opcion.textContent =
+                    `${servicio.nombre} — ${formatearPrecio(servicio.precio)} · ${servicio.duracion_min} min`;
+                selectServicio.appendChild(opcion);
+            }
+        }
+
+        function filaDeCita(cita) {
+            const fila = document.createElement('tr');
+
+            const cuando = document.createElement('td');
+            cuando.textContent = formatearFecha(cita.fecha_hora);
+
+            const servicio = document.createElement('td');
+            servicio.textContent = nombresServicio.get(cita.id_servicio) || `#${cita.id_servicio}`;
+
+            const barbero = document.createElement('td');
+            barbero.textContent = nombresBarbero.get(cita.id_barbero) || `#${cita.id_barbero}`;
+
+            const estado = document.createElement('td');
+            const etiqueta = document.createElement('span');
+            etiqueta.className = `etiqueta ${cita.estado}`;
+            etiqueta.textContent = cita.estado;
+            estado.appendChild(etiqueta);
+
+            const acciones = document.createElement('td');
+            if (cita.estado === 'agendada') {
+                const cancelar = document.createElement('button');
+                cancelar.className = 'boton boton-secundario';
+                cancelar.style.padding = '.35rem .75rem';
+                cancelar.style.fontSize = '.85rem';
+                cancelar.textContent = 'Cancelar';
+                cancelar.addEventListener('click', () => cancelarCita(cita.id_cita, cancelar));
+                acciones.appendChild(cancelar);
+            }
+
+            fila.append(cuando, servicio, barbero, estado, acciones);
+            return fila;
+        }
+
+        async function cargarCitas() {
+            const cuerpo = document.getElementById('citas-cuerpo');
+            const envoltura = document.getElementById('citas-envoltura');
+            const vacio = document.getElementById('citas-vacio');
+
+            try {
+                const citas = await pedir('GET', '/citas/', null, true);
+                cuerpo.innerHTML = '';
+
+                if (citas.length === 0) {
+                    envoltura.classList.add('oculto');
+                    vacio.classList.remove('oculto');
+                    return;
+                }
+
+                for (const cita of citas) {
+                    cuerpo.appendChild(filaDeCita(cita));
+                }
+                vacio.classList.add('oculto');
+                envoltura.classList.remove('oculto');
+            } catch (error) {
+                if (error instanceof ErrorApi && error.codigo === 401) {
+                    manejarSesionExpirada();
+                    return;
+                }
+                mostrarError(cajaMensaje, error);
+            }
+        }
+
+        async function cancelarCita(idCita, boton) {
+            ocultarMensaje(cajaMensaje);
+            boton.disabled = true;
+
+            try {
+                await pedir('DELETE', `/citas/${idCita}`, null, true);
+                mostrarMensaje(cajaMensaje, 'exito', 'La cita quedó cancelada.');
+                await cargarCitas();
+            } catch (error) {
+                boton.disabled = false;
+                if (error instanceof ErrorApi && error.codigo === 401) {
+                    manejarSesionExpirada();
+                    return;
+                }
+                mostrarError(cajaMensaje, error);
+            }
+        }
+
+        function manejarSesionExpirada() {
+            Sesion.cerrar();
+            mostrarMensaje(
+                cajaMensaje,
+                'aviso',
+                'Su sesión expiró. Vuelva a iniciar sesión para continuar.'
+            );
+            seccionConSesion.classList.add('oculto');
+            seccionSinSesion.classList.remove('oculto');
+            pintarSesionEnBarra();
+        }
+
+        formCita.addEventListener('submit', async evento => {
+            evento.preventDefault();
+            ocultarMensaje(cajaMensaje);
+
+            const boton = formCita.querySelector('button[type="submit"]');
+            boton.disabled = true;
+            boton.textContent = 'Agendando…';
+
+            try {
+                /* El cuerpo no incluye id_cliente: la API lo toma del token. */
+                await pedir('POST', '/citas/', {
+                    id_barbero: Number(selectBarbero.value),
+                    id_servicio: Number(selectServicio.value),
+                    fecha_hora: aIsoUtc(campoFecha.value)
+                }, true);
+
+                mostrarMensaje(cajaMensaje, 'exito', 'Su cita quedó agendada.');
+                formCita.reset();
+                campoFecha.min = minimoLocal();
+                await cargarCitas();
+            } catch (error) {
+                if (error instanceof ErrorApi && error.codigo === 401) {
+                    manejarSesionExpirada();
+                } else {
+                    mostrarError(cajaMensaje, error);
+                }
+            } finally {
+                boton.disabled = false;
+                boton.textContent = 'Agendar cita';
+            }
+        });
+
+        async function iniciar() {
+            if (!Sesion.activa()) {
+                seccionSinSesion.classList.remove('oculto');
+                return;
+            }
+
+            seccionConSesion.classList.remove('oculto');
+            campoFecha.min = minimoLocal();
+
+            try {
+                await cargarOpciones();
+                await cargarCitas();
+            } catch (error) {
+                mostrarError(cajaMensaje, error);
+            }
+        }
+
+        iniciar();
+    </script>
+</body>
+
+</html>

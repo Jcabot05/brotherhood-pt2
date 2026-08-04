@@ -93,11 +93,16 @@ class Servicio(ServicioBase):
 
 
 class CitaCrear(BaseModel):
-    id_cliente: int
+    """Datos con los que un cliente autenticado agenda una cita (HU-02).
+
+    No incluye `id_cliente`: la cita se asocia siempre al dueño del token, de
+    modo que nadie pueda agendar en nombre de otro (RN-03). Tampoco incluye
+    `estado`: una cita nueva nace siempre como agendada (RN-10).
+    """
+
     id_barbero: int
     id_servicio: int
     fecha_hora: datetime
-    estado: EstadoCita = EstadoCita.agendada
 
 
 class CitaReprogramar(BaseModel):

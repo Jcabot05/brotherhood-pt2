@@ -138,6 +138,44 @@ listado admite `?incluir_inactivos=true` para la administración del catálogo.
 
 Un catálogo sin resultados devuelve `200` con un arreglo vacío, nunca un error.
 
+## Citas (HU-02)
+
+Agendar crea un compromiso con un barbero en un horario concreto y consume disponibilidad real
+del negocio, por lo que toda operación sobre citas exige un token válido (RN-02).
+
+| Endpoint | Acceso | Descripción |
+|---|---|---|
+| `POST /citas/` | Autenticado | Agenda una cita a nombre del cliente del token |
+| `GET /citas/` | Autenticado | Lista las citas propias (el administrador ve todas) |
+| `GET /citas/{id}` | Autenticado | Consulta una cita propia |
+| `PUT /citas/{id}` | Autenticado | Reprograma una cita propia |
+| `PATCH /citas/{id}/estado` | Autenticado | Cambia el estado; *atendida* solo administrador |
+| `DELETE /citas/{id}` | Autenticado | Cancela una cita propia |
+
+El cuerpo de `POST /citas/` **no incluye `id_cliente`**: la cita se asocia siempre al dueño del
+token, de modo que nadie pueda agendar en nombre de otro (RN-03).
+
+```json
+{
+  "id_barbero": 1,
+  "id_servicio": 2,
+  "fecha_hora": "2026-09-15T14:00:00Z"
+}
+```
+
+Reglas que gobiernan la operación:
+
+- **RN-03** — un cliente solo consulta y modifica sus propias citas; operar sobre la cita de otro
+  devuelve `403`. El administrador queda exento, porque gestiona la agenda del negocio.
+- **RN-07** — un barbero no puede tener dos citas cuyos intervalos se solapen. El intervalo va
+  desde la hora de la cita hasta esa hora más la duración del servicio, de modo que una reserva
+  que empieza en mitad de otra se rechaza con `409`.
+- **RN-08** — solo se agenda en fecha y hora futuras; una fecha pasada devuelve `422`.
+- **RN-10** — la cita nace siempre en estado *agendada*.
+- **RN-11** — una cita cancelada o atendida no se reprograma; su horario queda liberado.
+- **RN-12** — una cita solo se cancela mientras su horario siga siendo futuro.
+- **RN-17** — las fechas se manejan y almacenan en UTC.
+
 ## Ejecución
 
 ```bash

@@ -1,0 +1,243 @@
+/* Hoja de estilos del cliente web de TheBrotherhood.
+   Sin dependencias externas: la página funciona sin conexión y sin paso de
+   construcción, de modo que basta con levantar la API para verla. */
+
+:root {
+    --tinta: #16130f;
+    --tinta-suave: #5c554c;
+    --papel: #f7f4ef;
+    --superficie: #ffffff;
+    --borde: #e2dcd2;
+    --acento: #8b5e34;
+    --acento-oscuro: #6f4a28;
+    --exito: #2f6f4f;
+    --error: #a83232;
+    --aviso: #8a6d1f;
+    --radio: 10px;
+    --sombra: 0 1px 2px rgba(22, 19, 15, .06), 0 8px 24px rgba(22, 19, 15, .06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+}
+
+/* --- Estructura ------------------------------------------------------ */
+
+.barra {
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.barra-contenido {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: .9rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.marca {
+    font-weight: 700;
+    letter-spacing: -.02em;
+    font-size: 1.05rem;
+    text-decoration: none;
+    color: var(--tinta);
+}
+
+.marca span { color: var(--acento); }
+
+.navegacion {
+    display: flex;
+    gap: 1.15rem;
+    margin-left: auto;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.navegacion a {
+    color: var(--tinta-suave);
+    text-decoration: none;
+    font-size: .92rem;
+    padding: .25rem 0;
+    border-bottom: 2px solid transparent;
+}
+
+.navegacion a:hover { color: var(--tinta); }
+.navegacion a.activo { color: var(--tinta); border-bottom-color: var(--acento); }
+
+.contenido {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+}
+
+.encabezado { margin-bottom: 1.75rem; }
+.encabezado h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+.encabezado p { margin: 0; color: var(--tinta-suave); font-size: .95rem; }
+
+/* --- Tarjetas -------------------------------------------------------- */
+
+.tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1.25rem;
+    box-shadow: var(--sombra);
+}
+
+.rejilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+}
+
+.servicio h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
+.servicio .duracion { color: var(--tinta-suave); font-size: .88rem; margin: 0 0 .8rem; }
+.servicio .precio { font-size: 1.35rem; font-weight: 700; color: var(--acento); }
+
+/* --- Formularios ----------------------------------------------------- */
+
+.formulario { max-width: 420px; }
+.campo { margin-bottom: 1rem; }
+
+.campo label {
+    display: block;
+    font-size: .87rem;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+.campo input,
+.campo select {
+    width: 100%;
+    padding: .6rem .7rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    font: inherit;
+    background: var(--superficie);
+    color: var(--tinta);
+}
+
+.campo input:focus,
+.campo select:focus {
+    outline: 2px solid var(--acento);
+    outline-offset: -1px;
+    border-color: var(--acento);
+}
+
+.campo .ayuda { font-size: .8rem; color: var(--tinta-suave); margin-top: .3rem; }
+
+.boton {
+    background: var(--acento);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: .65rem 1.15rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.boton:hover { background: var(--acento-oscuro); }
+.boton:disabled { opacity: .55; cursor: not-allowed; }
+
+.boton-secundario {
+    background: transparent;
+    color: var(--tinta-suave);
+    border: 1px solid var(--borde);
+}
+
+.boton-secundario:hover { background: var(--papel); color: var(--tinta); }
+
+.pestanas { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+
+.pestana {
+    padding: .45rem .9rem;
+    border: 1px solid var(--borde);
+    background: var(--superficie);
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-size: .9rem;
+    color: var(--tinta-suave);
+}
+
+.pestana.activa { background: var(--tinta); color: #fff; border-color: var(--tinta); }
+
+/* --- Mensajes -------------------------------------------------------- */
+
+.mensaje {
+    padding: .75rem .9rem;
+    border-radius: 8px;
+    font-size: .9rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+}
+
+.mensaje.exito { background: #eaf4ee; color: var(--exito); border-color: #cfe6d9; }
+.mensaje.error { background: #fbeceb; color: var(--error); border-color: #f2d4d1; }
+.mensaje.aviso { background: #fbf5e2; color: var(--aviso); border-color: #eee0b8; }
+.mensaje .codigo { font-weight: 700; }
+.mensaje ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+
+.vacio {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--tinta-suave);
+    border: 1px dashed var(--borde);
+    border-radius: var(--radio);
+}
+
+/* --- Tabla ----------------------------------------------------------- */
+
+.tabla-envoltura { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+
+th, td {
+    text-align: left;
+    padding: .65rem .75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-suave); }
+
+.etiqueta {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.etiqueta.agendada { background: #e8f0fb; color: #2a5aa0; }
+.etiqueta.cancelada { background: #f3f1ee; color: var(--tinta-suave); }
+.etiqueta.atendida { background: #eaf4ee; color: var(--exito); }
+
+/* --- Utilidades ------------------------------------------------------ */
+
+/* El estado de sesión agrupa el correo y el enlace de salida, de modo que
+   conserven la separación del resto de la navegación. */
+#estado-sesion {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.15rem;
+}
+
+.sesion { font-size: .88rem; color: var(--tinta-suave); }
+.sesion strong { color: var(--tinta); font-weight: 600; }
+.oculto { display: none !important; }
+.acciones { display: flex; gap: .6rem; align-items: center; margin-top: 1.25rem; }
+.nota { font-size: .85rem; color: var(--tinta-suave); margin-top: 1.5rem; }
+.nota code { background: var(--superficie); padding: .1rem .35rem; border-radius: 4px; border: 1px solid var(--borde); }

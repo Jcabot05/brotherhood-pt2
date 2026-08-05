@@ -8,6 +8,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -23,6 +24,29 @@ class Base(DeclarativeBase):
     pass
 
 
+class UsuarioTabla(Base):
+    """Cuenta de acceso al sistema (Proyecto 04).
+
+    La contraseña se guarda únicamente como hash bcrypt (RN-05): el sistema
+    nunca almacena ni puede recuperar el texto plano.
+    """
+
+    __tablename__ = "usuario"
+    __table_args__ = (
+        CheckConstraint("rol in ('cliente', 'admin')", name="usuario_rol_valido"),
+        {"schema": "daw"},
+    )
+
+    id_usuario: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    correo: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    contrasena_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    rol: Mapped[str] = mapped_column(Text, nullable=False, default="cliente")
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    creado_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class ClienteTabla(Base):
     __tablename__ = "cliente"
     __table_args__ = {"schema": "daw"}
@@ -31,6 +55,13 @@ class ClienteTabla(Base):
     nombre: Mapped[str] = mapped_column(Text, nullable=False)
     telefono: Mapped[str] = mapped_column(Text, nullable=False)
     correo: Mapped[str] = mapped_column(Text, nullable=False)
+    # Nullable: los clientes registrados en el Proyecto 03 no tienen cuenta de
+    # acceso asociada y siguen siendo válidos.
+    id_usuario: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("daw.usuario.id_usuario", ondelete="SET NULL"),
+        unique=True,
+    )
     creado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -60,6 +91,9 @@ class ServicioTabla(Base):
     nombre: Mapped[str] = mapped_column(Text, nullable=False)
     precio: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     duracion_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Retiro lógico del catálogo (RN-16): un servicio con citas asociadas no se
+    # elimina físicamente, para preservar el historial.
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     creado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

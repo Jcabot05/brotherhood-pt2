@@ -88,8 +88,13 @@ def salud():
 # El cliente web se sirve desde la propia API, bajo el prefijo `/app`. Se monta
 # al final para que las rutas de los recursos tengan precedencia. `html=True`
 # resuelve `/app/` a `index.html`.
-app.mount(
-    "/app",
-    StaticFiles(directory=DIRECTORIO_WEB, html=True),
-    name="cliente-web",
-)
+#
+# El montaje es condicional a propósito: si un despliegue no incluyera la
+# carpeta `web`, la API debe seguir sirviendo sus recursos en lugar de negarse
+# a arrancar por un archivo estático ausente.
+if DIRECTORIO_WEB.is_dir():
+    app.mount(
+        "/app",
+        StaticFiles(directory=DIRECTORIO_WEB, html=True),
+        name="cliente-web",
+    )

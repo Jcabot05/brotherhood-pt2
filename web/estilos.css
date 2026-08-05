@@ -160,6 +160,36 @@ body {
 
 .boton-secundario:hover { background: var(--papel); color: var(--tinta); }
 
+/* Horarios reservables: una rejilla de franjas en lugar de un campo libre,
+   de modo que solo puedan elegirse horarios válidos (RN-21 a RN-23). */
+.horarios {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: .5rem;
+    margin-bottom: .5rem;
+}
+
+.horario {
+    padding: .5rem .4rem;
+    border: 1px solid var(--borde);
+    background: var(--superficie);
+    border-radius: 8px;
+    font: inherit;
+    font-size: .88rem;
+    color: var(--tinta);
+    cursor: pointer;
+    text-align: center;
+}
+
+.horario:hover { border-color: var(--acento); color: var(--acento); }
+
+.horario.elegido {
+    background: var(--acento);
+    border-color: var(--acento);
+    color: #fff;
+    font-weight: 600;
+}
+
 .pestanas { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
 
 .pestana {

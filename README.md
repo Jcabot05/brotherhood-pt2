@@ -151,6 +151,7 @@ del negocio, por lo que toda operación sobre citas exige un token válido (RN-0
 
 | Endpoint | Acceso | Descripción |
 |---|---|---|
+| `GET /citas/disponibilidad` | Público | Horarios libres de un barbero para un servicio y día |
 | `POST /citas/` | Autenticado | Agenda una cita a nombre del cliente del token |
 | `GET /citas/` | Autenticado | Lista las citas propias (el administrador ve todas) |
 | `GET /citas/{id}` | Autenticado | Consulta una cita propia |
@@ -181,6 +182,41 @@ Reglas que gobiernan la operación:
 - **RN-11** — una cita cancelada o atendida no se reprograma; su horario queda liberado.
 - **RN-12** — una cita solo se cancela mientras su horario siga siendo futuro.
 - **RN-17** — las fechas se manejan y almacenan en UTC.
+- **RN-21 a RN-23** — la cita debe caer dentro del horario de atención, empezar en un intervalo
+  regular y caber completa antes del cierre.
+
+### Horarios de reserva
+
+La barbería atiende de lunes a sábado, de 9:00 a 19:00, y las citas empiezan cada 30 minutos. Un
+horario fuera de esa franja, con minutos arbitrarios o que no alcance a terminar antes del cierre
+se rechaza con `422` y un mensaje que explica el motivo.
+
+Para no dejar que el usuario descubra esas restricciones por ensayo y error,
+`GET /citas/disponibilidad` devuelve las franjas realmente reservables:
+
+```
+GET /citas/disponibilidad?id_barbero=1&id_servicio=3&fecha=2026-09-14
+```
+
+```json
+{
+  "fecha": "2026-09-14",
+  "duracion_min": 45,
+  "atiende": true,
+  "horario_atencion": "de lunes a sábado, de 9:00 a 19:00",
+  "horarios": [
+    { "inicio": "2026-09-14T14:00:00Z", "fin": "2026-09-14T14:45:00Z", "etiqueta": "09:00 a 09:45" }
+  ]
+}
+```
+
+La lista descuenta las citas ya agendadas del barbero y los horarios que no dejan tiempo antes del
+cierre, de modo que depende del servicio elegido: un combo de 45 minutos ofrece menos franjas que
+un corte de 30.
+
+El horario se configura con variables de entorno (`HORA_APERTURA`, `HORA_CIERRE`,
+`INTERVALO_MINUTOS`, `DIAS_LABORABLES`, `ZONA_HORARIA`), así que ajustarlo no exige tocar el
+código.
 
 ## Ejecución
 

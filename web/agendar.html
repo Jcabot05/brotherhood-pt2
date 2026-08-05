@@ -49,11 +49,17 @@
                     <select id="servicio" required></select>
                 </div>
                 <div class="campo">
-                    <label for="fecha-hora">Fecha y hora</label>
-                    <input type="datetime-local" id="fecha-hora" required>
-                    <p class="ayuda">Debe ser una fecha futura. Se envía a la API en UTC.</p>
+                    <label for="fecha">Fecha</label>
+                    <input type="date" id="fecha" required>
                 </div>
-                <button type="submit" class="boton">Agendar cita</button>
+                <div class="campo">
+                    <label>Horario disponible</label>
+                    <div id="horarios" class="horarios"></div>
+                    <p class="ayuda" id="ayuda-horarios">
+                        Elija una fecha para ver los horarios libres.
+                    </p>
+                </div>
+                <button type="submit" class="boton" disabled>Agendar cita</button>
             </form>
 
             <h2 style="margin:2.25rem 0 .9rem;font-size:1.15rem">Mis citas</h2>
@@ -89,21 +95,22 @@
         const formCita = document.getElementById('form-cita');
         const selectBarbero = document.getElementById('barbero');
         const selectServicio = document.getElementById('servicio');
-        const campoFecha = document.getElementById('fecha-hora');
+        const campoFecha = document.getElementById('fecha');
+        const cajaHorarios = document.getElementById('horarios');
+        const ayudaHorarios = document.getElementById('ayuda-horarios');
+        const botonAgendar = formCita.querySelector('button[type="submit"]');
 
         const nombresServicio = new Map();
         const nombresBarbero = new Map();
 
-        /* La API devuelve y espera UTC (RN-17); el campo del formulario trabaja
-           en hora local, de modo que la conversión ocurre aquí. */
-        function aIsoUtc(valorLocal) {
-            return new Date(valorLocal).toISOString();
-        }
+        /* Horario elegido. La API entrega instantes en UTC (RN-17), así que se
+           conserva tal cual y no se recompone a partir de la hora mostrada. */
+        let horarioElegido = null;
 
-        function minimoLocal() {
-            const ahora = new Date(Date.now() + 60 * 60 * 1000);
+        function hoyLocal() {
+            const ahora = new Date();
             const desfase = ahora.getTimezoneOffset() * 60000;
-            return new Date(ahora - desfase).toISOString().slice(0, 16);
+            return new Date(ahora - desfase).toISOString().slice(0, 10);
         }
 
         async function cargarOpciones() {
@@ -131,6 +138,78 @@
                 opcion.textContent =
                     `${servicio.nombre} — ${formatearPrecio(servicio.precio)} · ${servicio.duracion_min} min`;
                 selectServicio.appendChild(opcion);
+            }
+        }
+
+        /* --- Horarios disponibles (RN-21 a RN-23) ---------------------------
+           La lista la calcula la API cruzando el horario de atención con las
+           citas ya agendadas, de modo que aquí solo se pinta lo que ya es
+           válido: quien reserva no puede elegir un horario imposible. */
+
+        function limpiarHorarios(mensaje) {
+            cajaHorarios.innerHTML = '';
+            horarioElegido = null;
+            botonAgendar.disabled = true;
+            ayudaHorarios.textContent = mensaje;
+        }
+
+        async function cargarHorarios() {
+            const fecha = campoFecha.value;
+            if (!fecha) {
+                limpiarHorarios('Elija una fecha para ver los horarios libres.');
+                return;
+            }
+
+            limpiarHorarios('Consultando horarios…');
+
+            const parametros = new URLSearchParams({
+                id_barbero: selectBarbero.value,
+                id_servicio: selectServicio.value,
+                fecha
+            });
+
+            try {
+                const datos = await pedir('GET', `/citas/disponibilidad?${parametros}`);
+
+                if (!datos.atiende) {
+                    limpiarHorarios(
+                        `La barbería no atiende ese día. Horario: ${datos.horario_atencion}.`
+                    );
+                    return;
+                }
+
+                if (datos.horarios.length === 0) {
+                    limpiarHorarios(
+                        'No quedan horarios libres ese día con ese barbero. '
+                        + 'Pruebe otra fecha u otro barbero.'
+                    );
+                    return;
+                }
+
+                cajaHorarios.innerHTML = '';
+                for (const horario of datos.horarios) {
+                    const boton = document.createElement('button');
+                    boton.type = 'button';
+                    boton.className = 'horario';
+                    boton.textContent = horario.etiqueta;
+                    boton.addEventListener('click', () => {
+                        for (const otro of cajaHorarios.querySelectorAll('.horario')) {
+                            otro.classList.remove('elegido');
+                        }
+                        boton.classList.add('elegido');
+                        horarioElegido = horario.inicio;
+                        botonAgendar.disabled = false;
+                        ayudaHorarios.textContent = `Horario elegido: ${horario.etiqueta}.`;
+                    });
+                    cajaHorarios.appendChild(boton);
+                }
+
+                ayudaHorarios.textContent =
+                    `${datos.horarios.length} horarios libres · duración del servicio: `
+                    + `${datos.duracion_min} minutos.`;
+            } catch (error) {
+                limpiarHorarios('No se pudieron consultar los horarios.');
+                mostrarError(cajaMensaje, error);
             }
         }
 
@@ -230,22 +309,28 @@
             evento.preventDefault();
             ocultarMensaje(cajaMensaje);
 
-            const boton = formCita.querySelector('button[type="submit"]');
+            if (!horarioElegido) {
+                mostrarMensaje(cajaMensaje, 'aviso', 'Elija un horario disponible.');
+                return;
+            }
+
+            const boton = botonAgendar;
             boton.disabled = true;
             boton.textContent = 'Agendando…';
 
             try {
-                /* El cuerpo no incluye id_cliente: la API lo toma del token. */
+                /* El cuerpo no incluye id_cliente: la API lo toma del token.
+                   El horario viaja tal como lo entregó la API, en UTC. */
                 await pedir('POST', '/citas/', {
                     id_barbero: Number(selectBarbero.value),
                     id_servicio: Number(selectServicio.value),
-                    fecha_hora: aIsoUtc(campoFecha.value)
+                    fecha_hora: horarioElegido
                 }, true);
 
                 mostrarMensaje(cajaMensaje, 'exito', 'Su cita quedó agendada.');
-                formCita.reset();
-                campoFecha.min = minimoLocal();
                 await cargarCitas();
+                // El horario recién tomado deja de estar libre.
+                await cargarHorarios();
             } catch (error) {
                 if (error instanceof ErrorApi && error.codigo === 401) {
                     manejarSesionExpirada();
@@ -253,10 +338,15 @@
                     mostrarError(cajaMensaje, error);
                 }
             } finally {
-                boton.disabled = false;
                 boton.textContent = 'Agendar cita';
+                boton.disabled = horarioElegido === null;
             }
         });
+
+        // Cambiar barbero, servicio o fecha altera qué horarios quedan libres.
+        selectBarbero.addEventListener('change', cargarHorarios);
+        selectServicio.addEventListener('change', cargarHorarios);
+        campoFecha.addEventListener('change', cargarHorarios);
 
         async function iniciar() {
             if (!Sesion.activa()) {
@@ -265,11 +355,12 @@
             }
 
             seccionConSesion.classList.remove('oculto');
-            campoFecha.min = minimoLocal();
+            campoFecha.min = hoyLocal();
 
             try {
                 await cargarOpciones();
                 await cargarCitas();
+                await cargarHorarios();
             } catch (error) {
                 mostrarError(cajaMensaje, error);
             }

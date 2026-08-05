@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
@@ -125,6 +125,28 @@ class Cita(BaseModel):
     fecha_hora: datetime
     estado: EstadoCita
     creado_en: datetime
+
+
+class HorarioDisponible(BaseModel):
+    """Un horario en el que la cita podría empezar (RN-22)."""
+
+    inicio: datetime
+    fin: datetime
+    etiqueta: str = Field(
+        description="Franja en hora local, por ejemplo «08:00 a 08:30»."
+    )
+
+
+class DisponibilidadDia(BaseModel):
+    """Horarios libres de un barbero para un servicio en un día dado."""
+
+    fecha: date
+    id_barbero: int
+    id_servicio: int
+    duracion_min: int
+    atiende: bool = Field(description="Si la barbería abre ese día (RN-21).")
+    horario_atencion: str
+    horarios: list[HorarioDisponible]
 
 
 # --------------------------------------------------------------------

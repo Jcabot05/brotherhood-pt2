@@ -18,6 +18,7 @@ Variables de entorno:
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 from dotenv import load_dotenv
@@ -29,6 +30,9 @@ BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
 # Las credenciales no se versionan: se leen del entorno o del archivo .env.
 ADMIN_CORREO = os.getenv("ADMIN_CORREO", "")
 ADMIN_CONTRASENA = os.getenv("ADMIN_CONTRASENA", "")
+
+# Huso en que la barbería define su horario de atención (RN-21 a RN-23).
+ZONA_BARBERIA = ZoneInfo(os.getenv("ZONA_HORARIA", "America/Guayaquil"))
 
 resultados: list[tuple[str, str, bool, str]] = []
 
@@ -88,9 +92,22 @@ def verificar(requisito: str, descripcion: str, esperado: int, respuesta: httpx.
 
 def main() -> int:
     cliente = httpx.Client(base_url=BASE_URL, timeout=30)
-    horario = (datetime.now(timezone.utc) + timedelta(days=3)).replace(
-        minute=0, second=0, microsecond=0
-    )
+
+    # Se ancla a una hora fija del horario de atención en lugar de partir de
+    # la hora actual. Tomar `now()` hacía que el resultado dependiera del
+    # momento en que se lanzaran las pruebas: ejecutarlas por la tarde
+    # colocaba la reprogramación (+3 h) fuera del horario y la rechazaba con
+    # un 422 correcto, que aquí se leía como un fallo.
+    #
+    # Las 10:00 locales dejan margen para las tres horas que suma la prueba de
+    # reprogramación sin llegar al cierre. El lunes evita el domingo, que no
+    # es laborable (RN-21).
+    manana = datetime.now(ZONA_BARBERIA) + timedelta(days=3)
+    while manana.weekday() != 0:
+        manana += timedelta(days=1)
+    horario = manana.replace(
+        hour=10, minute=0, second=0, microsecond=0
+    ).astimezone(timezone.utc)
 
     # La administración del catálogo exige rol administrador (RN-04).
     admin = {"Authorization": f"Bearer {token_de_administrador(cliente)}"}

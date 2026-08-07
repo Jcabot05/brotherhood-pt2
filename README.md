@@ -236,26 +236,40 @@ código.
 
 ## Ejecución
 
-Hacen falta dos procesos: la API y el cliente web.
+Django sirve tanto la API como el cliente web, de modo que todo queda en **una sola dirección**:
+`http://127.0.0.1:8000`.
 
 ```bash
-# API
+cd cliente && npm run build && cd ..   # compila el cliente
 python manage.py runserver
-
-# Cliente web, en otra terminal
-cd cliente
-npm install     # sólo la primera vez
-npm run dev
 ```
 
-La API queda en `http://127.0.0.1:8000` y su documentación interactiva en
-`http://127.0.0.1:8000/docs`. El cliente web, en `http://localhost:5173`.
+| Recurso | Dirección |
+|---|---|
+| Cliente web | `http://127.0.0.1:8000/` |
+| API | `http://127.0.0.1:8000/servicios/`, `/citas/`, `/auth/`… |
+| Documentación interactiva | `http://127.0.0.1:8000/docs` |
 
-El servidor de desarrollo del cliente reenvía las peticiones de la API al backend, así que el
-navegador las ve como del mismo origen y la cookie de sesión viaja sin configuración adicional.
+Que la interfaz y la API compartan origen no es sólo comodidad: es lo que permite mantener la
+cookie de sesión en `SameSite=Lax` sin necesidad de un token CSRF aparte (ver más abajo).
 
-Para producción, `npm run build` genera los archivos estáticos en `cliente/dist/`, pensados para
-servirse desde el mismo dominio que la API.
+El build queda en `static_build/`, que no se versiona. Hay que recompilar tras cambiar el código
+del cliente.
+
+### Desarrollo del cliente
+
+Para trabajar sobre la interfaz conviene el servidor de Vite, que recompila al guardar:
+
+```bash
+# API, en una terminal
+python manage.py runserver
+
+# Cliente, en otra
+cd cliente && npm run dev
+```
+
+Queda en `http://localhost:5173` y reenvía las peticiones de la API al backend, así que el
+navegador las sigue viendo del mismo origen.
 
 ## Cliente web
 
@@ -264,6 +278,10 @@ servirse desde el mismo dominio que la API.
 | Catálogo de servicios | `/` | Público |
 | Registro e inicio de sesión | `/login` | Público |
 | Agendar cita y ver las propias | `/agendar` | Requiere sesión |
+
+Las rutas las resuelve react-router dentro del navegador. Django devuelve `index.html` para
+cualquier dirección que no reclame la API, de modo que recargar la página en `/agendar` funciona
+igual que llegar navegando.
 
 Los errores de la API se muestran con un mensaje legible: `401` invita a acceder de nuevo, `403`
 explica la falta de permisos, `409` describe el conflicto de horario y `422` enumera los campos

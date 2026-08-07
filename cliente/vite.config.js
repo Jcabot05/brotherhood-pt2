@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     plugins: [react()],
+    build: {
+        // El build queda donde Django lo recoge para servirlo. Así en
+        // producción todo sale de un solo origen y la cookie de sesión no
+        // necesita SameSite=None ni protección CSRF aparte.
+        outDir: '../static_build',
+        emptyOutDir: true,
+    },
     server: {
         port: 5173,
         // Las peticiones a la API se reenvían al backend de Django. Así el

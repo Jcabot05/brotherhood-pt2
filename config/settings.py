@@ -174,3 +174,18 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+
+# --- Cliente web -----------------------------------------------------------
+# Django sirve el build de React, de modo que la aplicación entera vive en un
+# solo origen: la interfaz y la API comparten dominio y puerto. Eso es lo que
+# permite mantener la cookie de sesión en SameSite=Lax, que ya bloquea su
+# envío desde otros sitios, sin necesidad de un token CSRF aparte.
+#
+# En desarrollo puede usarse en su lugar el servidor de Vite (`npm run dev`),
+# que recompila al guardar y reenvía las peticiones de la API aquí.
+
+CLIENTE_BUILD = BASE_DIR / "static_build"
+
+# Los archivos con hash en el nombre (JS y CSS que genera Vite) se sirven
+# desde /assets/.
+STATICFILES_DIRS = [CLIENTE_BUILD / "assets"] if CLIENTE_BUILD.is_dir() else []

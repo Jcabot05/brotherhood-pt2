@@ -15,6 +15,9 @@ Reglas de negocio aplicadas:
   duración del servicio.
 - RN-08: una cita solo puede agendarse en una fecha/hora futura.
 - RN-10: una cita nueva nace siempre en estado agendada.
+- RN-21: la cita debe caer dentro del horario de atención de la barbería.
+- RN-22: los inicios de cita ocurren en intervalos regulares.
+- RN-23: el servicio debe caber completo antes de la hora de cierre.
 - RN-11: una cita cancelada o atendida no puede reprogramarse.
 - RN-12: una cita solo puede cancelarse mientras su horario siga siendo futuro.
 - RN-13: la cita exige la existencia previa de barbero y servicio.
@@ -27,9 +30,25 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from app.agenda import (
+    HorarioInvalido,
+    a_local,
+    descripcion_horario,
+    es_dia_laborable,
+    horarios_del_dia,
+    verificar_horario,
+)
 from app.database import get_sesion
 from app.dependencias import usuario_actual
-from app.models import Cita, CitaCambiarEstado, CitaCrear, CitaReprogramar, EstadoCita
+from app.models import (
+    Cita,
+    CitaCambiarEstado,
+    CitaCrear,
+    CitaReprogramar,
+    DisponibilidadDia,
+    EstadoCita,
+    HorarioDisponible,
+)
 from app.tablas import BarberoTabla, CitaTabla, ClienteTabla, ServicioTabla, UsuarioTabla
 
 router = APIRouter(prefix="/citas", tags=["Citas"])
@@ -90,6 +109,21 @@ def _asegurar_futuro(fecha_hora: datetime) -> datetime:
     return momento
 
 
+def _asegurar_horario_valido(inicio: datetime, duracion_min: int) -> None:
+    """RN-21 a RN-23: la cita debe caber en el horario de atención.
+
+    Traduce el motivo concreto a un 422, de modo que quien reserva sepa por qué
+    ese horario no sirve en lugar de recibir un rechazo genérico (RN-19).
+    """
+    try:
+        verificar_horario(inicio, duracion_min)
+    except HorarioInvalido as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error),
+        ) from error
+
+
 def _verificar_referencias(sesion: Session, id_barbero: int, id_servicio: int) -> ServicioTabla:
     """RN-13: barbero y servicio deben existir. Devuelve el servicio."""
     if sesion.get(BarberoTabla, id_barbero) is None:
@@ -105,6 +139,31 @@ def _verificar_referencias(sesion: Session, id_barbero: int, id_servicio: int) -
             detail=f"No existe un servicio con id {id_servicio}.",
         )
     return servicio
+
+
+def _intervalos_ocupados(
+    sesion: Session, id_barbero: int, desde: datetime, hasta: datetime
+) -> list[tuple[datetime, datetime]]:
+    """Devuelve los intervalos que el barbero ya tiene comprometidos.
+
+    Una sola consulta por día en lugar de una por horario candidato: la
+    disponibilidad se calcula después en memoria.
+    """
+    consulta = (
+        select(CitaTabla.fecha_hora, ServicioTabla.duracion_min)
+        .join(ServicioTabla, ServicioTabla.id_servicio == CitaTabla.id_servicio)
+        .where(
+            CitaTabla.id_barbero == id_barbero,
+            CitaTabla.estado == EstadoCita.agendada.value,
+            CitaTabla.fecha_hora >= desde,
+            CitaTabla.fecha_hora < hasta,
+        )
+    )
+
+    return [
+        (comienzo, comienzo + timedelta(minutes=duracion))
+        for comienzo, duracion in sesion.execute(consulta).all()
+    ]
 
 
 def _verificar_disponibilidad(
@@ -199,6 +258,7 @@ def agendar_cita(
     inicio = _asegurar_futuro(datos.fecha_hora)
     servicio = _verificar_referencias(sesion, datos.id_barbero, datos.id_servicio)
 
+    _asegurar_horario_valido(inicio, servicio.duracion_min)
     _verificar_disponibilidad(
         sesion, datos.id_barbero, inicio, servicio.duracion_min
     )
@@ -255,6 +315,86 @@ def listar_citas(
     return sesion.scalars(consulta).all()
 
 
+@router.get(
+    "/disponibilidad",
+    response_model=DisponibilidadDia,
+    summary="Consultar los horarios libres de un barbero",
+)
+def consultar_disponibilidad(
+    id_barbero: int = Query(description="Barbero cuya agenda se consulta"),
+    id_servicio: int = Query(description="Servicio que se quiere reservar"),
+    fecha: date = Query(description="Día a consultar (AAAA-MM-DD)"),
+    sesion: Session = Depends(get_sesion),
+):
+    """Devuelve los horarios en que ese barbero puede atender ese servicio.
+
+    Cruza el horario de atención (RN-21 a RN-23) con las citas ya agendadas
+    (RN-07), de modo que quien reserva elija entre opciones válidas en lugar de
+    descubrir los conflictos al enviar el formulario.
+
+    Es de acceso público: consultar disponibilidad no compromete la agenda ni
+    revela datos de otros clientes, solo qué franjas están libres.
+    """
+    servicio = _verificar_referencias(sesion, id_barbero, id_servicio)
+    duracion = servicio.duracion_min
+
+    candidatos = horarios_del_dia(fecha, duracion)
+
+    if not candidatos:
+        return DisponibilidadDia(
+            fecha=fecha,
+            id_barbero=id_barbero,
+            id_servicio=id_servicio,
+            duracion_min=duracion,
+            atiende=es_dia_laborable(fecha),
+            horario_atencion=descripcion_horario(),
+            horarios=[],
+        )
+
+    # Los horarios pasados de hoy ya no son reservables (RN-08).
+    ahora = datetime.now(timezone.utc)
+    ocupados = _intervalos_ocupados(
+        sesion,
+        id_barbero,
+        candidatos[0],
+        candidatos[-1] + timedelta(minutes=duracion),
+    )
+
+    libres: list[HorarioDisponible] = []
+
+    for inicio in candidatos:
+        if inicio <= ahora:
+            continue
+
+        fin = inicio + timedelta(minutes=duracion)
+        # Se solapa si empieza antes de que termine el otro y viceversa.
+        if any(inicio < fin_ocupado and fin > inicio_ocupado
+               for inicio_ocupado, fin_ocupado in ocupados):
+            continue
+
+        inicio_local = a_local(inicio)
+        fin_local = a_local(fin)
+        libres.append(
+            HorarioDisponible(
+                inicio=inicio,
+                fin=fin,
+                etiqueta=(
+                    f"{inicio_local.strftime('%H:%M')} a {fin_local.strftime('%H:%M')}"
+                ),
+            )
+        )
+
+    return DisponibilidadDia(
+        fecha=fecha,
+        id_barbero=id_barbero,
+        id_servicio=id_servicio,
+        duracion_min=duracion,
+        atiende=True,
+        horario_atencion=descripcion_horario(),
+        horarios=libres,
+    )
+
+
 @router.get("/{id_cita}", response_model=Cita, summary="Consultar una cita")
 def obtener_cita(
     id_cita: int,
@@ -302,6 +442,7 @@ def reprogramar_cita(
     servicio = sesion.get(ServicioTabla, cita.id_servicio)
     duracion = servicio.duracion_min if servicio is not None else 0
 
+    _asegurar_horario_valido(inicio, duracion)
     _verificar_disponibilidad(
         sesion, cita.id_barbero, inicio, duracion, id_cita_excluida=id_cita
     )

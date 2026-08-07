@@ -69,6 +69,40 @@ async function pedir(metodo, ruta, cuerpo = null, conToken = false) {
    Traduce cada código HTTP al mensaje que corresponde a su causa, siguiendo
    RN-19, sin exponer detalles internos del servidor (RN-20). */
 
+/* Traduce el motivo de una validación fallida.
+   Se resuelve por el tipo de error, que es estable, y solo se recurre al texto
+   original cuando el tipo no está contemplado. */
+function traducirMotivo(mensaje, tipo, contexto) {
+    // El texto original es más específico que el tipo en algunos casos, así que
+    // se revisa primero.
+    if (typeof mensaje === 'string') {
+        if (/valid email/i.test(mensaje)) return 'no es un correo válido';
+    }
+
+    if (tipo === 'string_too_short' && contexto && contexto.min_length) {
+        const minimo = contexto.min_length;
+        return minimo === 1
+            ? 'no puede quedar vacío'
+            : `debe tener al menos ${minimo} caracteres`;
+    }
+
+    const porTipo = {
+        missing: 'este campo es obligatorio',
+        string_too_short: 'es demasiado corto',
+        string_too_long: 'es demasiado largo',
+        value_error: 'el formato no es válido',
+        datetime_parsing: 'la fecha no tiene un formato válido',
+        int_parsing: 'debe ser un número',
+        greater_than: 'debe ser mayor',
+        greater_than_equal: 'no puede ser menor',
+        less_than: 'debe ser menor',
+        less_than_equal: 'no puede ser mayor'
+    };
+
+    return (tipo && porTipo[tipo]) || 'no es válido';
+}
+
+
 class ErrorApi extends Error {
     constructor(codigo, cuerpo) {
         super(`HTTP ${codigo}`);
@@ -86,13 +120,15 @@ class ErrorApi extends Error {
             case 403:
                 return this.detalle() || 'No tiene permisos para realizar esta acción.';
             case 404:
-                return this.detalle() || 'El recurso solicitado no existe.';
+                return this.detalle() || 'No encontramos lo que busca. Puede que ya no esté disponible.';
             case 409:
-                return this.detalle() || 'La operación entra en conflicto con el estado actual.';
+                return this.detalle() || 'Ese horario ya no está disponible. Elija otro.';
             case 422:
-                return 'Revise los datos enviados: hay campos inválidos o incompletos.';
+                // El servidor explica el motivo cuando puede; si no, se orienta
+                // a revisar el formulario.
+                return this.detalle() || 'Revise los datos del formulario: hay campos incompletos o inválidos.';
             default:
-                return this.detalle() || 'No se pudo completar la operación. Intente de nuevo.';
+                return this.detalle() || 'No pudimos completar la operación. Intente de nuevo.';
         }
     }
 
@@ -102,15 +138,28 @@ class ErrorApi extends Error {
         return typeof d === 'string' ? d : null;
     }
 
-    /* Errores de validación campo por campo (respuestas 422 de FastAPI). */
+    /* Errores de validación campo por campo.
+       El servidor los entrega con el nombre técnico del campo y el motivo en
+       inglés, así que aquí se traducen a lo que el formulario muestra. */
     get camposInvalidos() {
         const d = this.cuerpo && this.cuerpo.detail;
         if (!Array.isArray(d)) return [];
 
+        const nombres = {
+            correo: 'Correo',
+            contrasena: 'Contraseña',
+            nombre: 'Nombre',
+            telefono: 'Teléfono',
+            fecha_hora: 'Fecha y hora',
+            id_barbero: 'Barbero',
+            id_servicio: 'Servicio'
+        };
+
         return d.map(item => {
             const ubicacion = Array.isArray(item.loc) ? item.loc : [];
-            const campo = ubicacion.filter(p => p !== 'body').join('.') || 'dato';
-            return `${campo}: ${item.msg}`;
+            const clave = ubicacion.filter(p => p !== 'body').join('.');
+            const campo = nombres[clave] || 'Dato';
+            return `${campo}: ${traducirMotivo(item.msg, item.type, item.ctx)}`;
         });
     }
 }
@@ -139,14 +188,15 @@ function mostrarMensaje(elemento, tipo, texto, detalles = []) {
 }
 
 function mostrarError(elemento, error) {
+    /* El código HTTP queda fuera del mensaje: a quien reserva le importa qué
+       pasó y qué hacer, no el número con el que el servidor lo expresó. */
     if (error instanceof ErrorApi) {
-        const etiqueta = `[${error.codigo}] `;
-        mostrarMensaje(elemento, 'error', etiqueta + error.mensaje, error.camposInvalidos);
+        mostrarMensaje(elemento, 'error', error.mensaje, error.camposInvalidos);
     } else {
         mostrarMensaje(
             elemento,
             'error',
-            'No se pudo conectar con la API. Verifique que el servidor esté en marcha.'
+            'No pudimos conectarnos en este momento. Revise su conexión e intente de nuevo.'
         );
     }
 }

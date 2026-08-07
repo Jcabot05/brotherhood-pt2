@@ -200,19 +200,24 @@ def main() -> int:
     )
     id_cita = r.json()["id_cita"]
 
-    verificar(
-        "RN-02",
-        "Rechazar una cita sin token de acceso",
-        401,
-        cliente.post(
-            "/citas/",
-            json={
-                "id_barbero": id_barbero,
-                "id_servicio": id_servicio,
-                "fecha_hora": (horario + timedelta(days=1)).isoformat(),
-            },
-        ),
-    )
+    # Desde que la sesión viaja en cookie httpOnly, omitir la cabecera Bearer
+    # ya no basta para simular una petición anónima: `httpx.Client` conserva
+    # las cookies que devolvió el registro y las reenvía sola. La petición se
+    # hace con un cliente limpio, sin cookies ni cabeceras.
+    with httpx.Client(base_url=str(cliente.base_url), timeout=20) as anonimo:
+        verificar(
+            "RN-02",
+            "Rechazar una cita sin token de acceso",
+            401,
+            anonimo.post(
+                "/citas/",
+                json={
+                    "id_barbero": id_barbero,
+                    "id_servicio": id_servicio,
+                    "fecha_hora": (horario + timedelta(days=1)).isoformat(),
+                },
+            ),
+        )
 
     verificar(
         "RF-05",

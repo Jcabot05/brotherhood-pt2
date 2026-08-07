@@ -3,25 +3,23 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "brotherhood-pt2"
-version = "2.0.0"
-description = "REST API de gestión de citas con autenticación para la barbería TheBrotherhood — Proyecto 04, Desarrollo de Aplicaciones Web"
+name = "brotherhood-api"
+version = "3.0.0"
+description = "API de gestión de citas de TheBrotherhood (Proyecto 04)"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]==0.139.0",
-    "pydantic[email]",
+    "django",
+    "djangorestframework",
+    "django-cors-headers",
+    "drf-spectacular",
     "python-dotenv",
-    "sqlalchemy",
     "psycopg[binary]",
     "pyjwt",
     "bcrypt",
 ]
 
-[tool.fastapi]
-entrypoint = "main:app"
-
-# `db` y `tests` contienen scripts, no paquetes instalables: sin esta lista
-# setuptools encuentra varios directorios de primer nivel y aborta el build.
 [tool.setuptools]
-packages = ["app", "app.routers"]
-py-modules = ["main"]
+# Se listan a mano porque `db/`, `docs/`, `tests/` y `cliente/` no son
+# paquetes y confundirían al descubrimiento automático.
+packages = ["apps", "apps.usuarios", "apps.catalogo", "apps.citas", "config"]
+py-modules = ["manage"]

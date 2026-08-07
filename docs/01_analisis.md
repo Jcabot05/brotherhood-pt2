@@ -150,3 +150,64 @@ del negocio no exija modificar el código.
 |---|---|---|
 | HU-01 | RF-04 | RN-01, RN-16, RN-18, RN-19 |
 | HU-02 | RF-05, RF-07 | RN-02, RN-03, RN-06, RN-07, RN-08, RN-10, RN-13, RN-17, RN-18, RN-19, RN-21, RN-22, RN-23 |
+
+---
+
+## 5. Decisiones sobre el transporte de la sesión
+
+Decisiones tomadas al migrar el sistema a Django y React. Se documentan aquí porque afectan a cómo
+se cumplen RN-02, RN-03 y RN-06, no sólo a la implementación.
+
+### Dónde vive el token
+
+La primera versión del cliente guardaba el token en `sessionStorage`. Funcionaba, pero tenía un
+defecto de fondo: todo lo que hay en `localStorage` o `sessionStorage` es legible por cualquier
+JavaScript que se ejecute en la página. Bastaría con una inyección de código para leer el token y
+suplantar al usuario durante toda su vigencia.
+
+El sistema tenía además un punto por donde esa inyección era posible: la barra de navegación
+insertaba el correo del usuario como HTML sin escapar, y el correo lo elige quien se registra.
+
+La sesión pasa entonces a viajar en una **cookie marcada `httpOnly`**. El navegador la adjunta a
+cada petición, pero no la expone al JavaScript de la página: ni al propio, ni al que un atacante
+lograra introducir. El robo del token deja de ser posible por esa vía.
+
+Consecuencias que esto trae, y cómo se resuelven:
+
+| Consecuencia | Resolución |
+|---|---|
+| El cliente ya no puede leer el token para saber si la sesión sigue viva. | Lo pregunta al servidor con `GET /auth/yo`, que valida firma y vigencia (RN-06). Es más fiable: la comprobación anterior sólo miraba si el token existía, de modo que una sesión ya caducada se daba por buena hasta que fallaba la primera petición. |
+| El cliente ya no puede borrar la cookie al cerrar sesión. | Se añade `POST /auth/logout`; sólo el servidor puede retirar una cookie httpOnly. |
+| Una cookie se envía sola, lo que abre la puerta a peticiones forjadas desde otro sitio (CSRF). | Ver abajo. |
+
+### Por qué no hace falta un token CSRF
+
+La cookie se emite con `SameSite=Lax`, que impide al navegador enviarla en peticiones originadas
+desde otro sitio, con una única excepción: las navegaciones de primer nivel hechas con `GET`.
+
+Esa excepción no es aprovechable aquí porque **ninguna operación de escritura de la API usa `GET`**:
+agendar, reprogramar, cancelar y cambiar de estado son `POST`, `PUT`, `PATCH` y `DELETE`. Un sitio
+externo no puede provocar ninguna de ellas con la sesión del usuario.
+
+La conclusión depende de que el cliente y la API compartan origen, que es como se despliega el
+sistema. Si el cliente pasara a otro dominio, la cookie necesitaría `SameSite=None` y la protección
+desaparecería: en ese caso habría que añadir un token CSRF explícito.
+
+### La cabecera `Authorization` sigue admitiéndose
+
+La API acepta también `Authorization: Bearer <token>`, y esa cabecera tiene prioridad sobre la
+cookie. Dos motivos: las pruebas de endpoints no son un navegador y no manejan cookies de sesión, y
+enviar la cabecera es un acto deliberado de quien llama, mientras que la cookie la adjunta el
+navegador sola. Si mandara la cookie, un cliente con una sesión guardada no podría actuar como otra
+cuenta aunque lo pidiera expresamente.
+
+### Endpoints que quedaron sin protección
+
+Al revisar la migración se encontró que los endpoints de clientes y barberos habían quedado sin
+autenticación desde el Proyecto 03: `GET /clientes/` devolvía el nombre, teléfono y correo de toda
+la clientela a cualquiera, y los borrados, al ser en cascada, arrastraban el historial de citas del
+registro eliminado. Contradecía RN-02 y RN-04, que ya estaban escritas en este documento.
+
+Ahora exigen rol de administrador, con dos excepciones deliberadas: el alta de un cliente
+(`POST /clientes/`), que es el punto de entrada de quien aún no tiene cuenta, y la lectura del
+listado de barberos, que el formulario de agendar necesita para ofrecer las opciones.

@@ -28,27 +28,37 @@ La validación de disponibilidad de barbero (RF-07) se incorpora como regla de n
 
 ## Stack
 
-- Python · FastAPI · Uvicorn
+- Python · Django · Django REST Framework
+- React · Vite · React Router
 - PostgreSQL (Supabase), esquema aislado `daw`
 - Documentación interactiva vía Swagger/OpenAPI en `/docs`
 
 ## Estructura
 
 ```
-main.py              Aplicación FastAPI: routers, manejo de errores y cliente web
-web/
-  index.html         Catálogo público de servicios (HU-01)
-  login.html         Registro e inicio de sesión
-  agendar.html       Formulario de cita y listado de citas propias (HU-02)
-  api.js             Cliente de la API, sesión y traducción de errores HTTP
-  estilos.css        Hoja de estilos, sin dependencias externas
-app/
-  database.py        Conexión a PostgreSQL (search_path limitado a `daw`)
-  seguridad.py       Hash de contraseñas (bcrypt) y tokens de acceso (JWT)
-  dependencias.py    Comprobaciones de autenticación y permisos para los routers
-  tablas.py          Tablas del esquema `daw` para SQLAlchemy
-  models.py          Esquemas de validación de entrada y salida (Pydantic)
-  routers/           Un módulo por recurso: auth, clientes, barberos, servicios, citas
+manage.py            Punto de entrada de Django
+config/
+  settings.py        Configuración: base de datos, DRF, cookie de sesión, CORS
+  urls.py            Rutas de primer nivel y documentación interactiva
+  excepciones.py     Traducción de errores al contrato publicado (422, integridad)
+apps/
+  usuarios/
+    models.py        Cuentas de acceso y fichas de cliente
+    seguridad.py     Hash de contraseñas (bcrypt) y tokens de acceso (JWT)
+    autenticacion.py Lectura de la sesión desde la cookie o la cabecera Bearer
+    permisos.py      Reglas de acceso RN-01 a RN-04
+    views.py         Registro, login, logout, cuenta propia y fichas de cliente
+  catalogo/          Servicios y barberos (RF-02, RF-03, RF-04)
+  citas/
+    agenda.py        Horario de atención y generación de horarios reservables
+    views.py         Agendar, consultar, reprogramar y cancelar (RF-05 a RF-09)
+cliente/
+  src/
+    api/cliente.js   Peticiones a la API y traducción de errores HTTP
+    api/sesion.jsx   Estado de la sesión, consultado al servidor
+    paginas/         Servicios (HU-01), Acceso, Agendar (HU-02)
+    componentes/     Barra de navegación y avisos
+    estilos.css      Hoja de estilos, sin dependencias externas
 db/
   schema.sql                        Creación del esquema `daw`, tablas, índices y permisos
   migracion_01_usuarios.sql         Tabla de usuarios y vínculo con cliente (Proyecto 04)
@@ -61,7 +71,7 @@ docs/                Documentación de las fases del proyecto
 
 ## Instalación
 
-Requiere Python 3.12 o superior.
+Requiere Python 3.12 o superior y Node.js 18 o superior.
 
 ```bash
 git clone https://github.com/Jcabot05/brotherhood-pt2.git
@@ -71,7 +81,13 @@ python3 -m venv .venv
 source .venv/bin/activate        # en Windows: .venv\Scripts\activate
 
 pip install -r requirements.txt
+
+cd cliente && npm install && cd ..
 ```
+
+> El esquema de la base lo administran los scripts de `db/`, no las migraciones de Django: los
+> modelos van declarados con `managed = False`. La base pertenece a un cliente real y su estructura
+> se cambia con SQL revisado a mano, así que **no se ejecuta `makemigrations` ni `migrate`**.
 
 ### Configuración
 
@@ -220,31 +236,60 @@ código.
 
 ## Ejecución
 
+Hacen falta dos procesos: la API y el cliente web.
+
 ```bash
-fastapi dev main.py
+# API
+python manage.py runserver
+
+# Cliente web, en otra terminal
+cd cliente
+npm install     # sólo la primera vez
+npm run dev
 ```
 
-La API queda en `http://127.0.0.1:8000` y la documentación interactiva en
-`http://127.0.0.1:8000/docs`.
+La API queda en `http://127.0.0.1:8000` y su documentación interactiva en
+`http://127.0.0.1:8000/docs`. El cliente web, en `http://localhost:5173`.
+
+El servidor de desarrollo del cliente reenvía las peticiones de la API al backend, así que el
+navegador las ve como del mismo origen y la cookie de sesión viaja sin configuración adicional.
+
+Para producción, `npm run build` genera los archivos estáticos en `cliente/dist/`, pensados para
+servirse desde el mismo dominio que la API.
 
 ## Cliente web
 
-La misma aplicación sirve un cliente web en `http://127.0.0.1:8000/app/`, de modo que no hace
-falta levantar un segundo servidor ni ejecutar un paso de construcción.
-
 | Página | Ruta | Acceso |
 |---|---|---|
-| Catálogo de servicios | `/app/` | Público |
-| Registro e inicio de sesión | `/app/login.html` | Público |
-| Agendar cita y ver las propias | `/app/agendar.html` | Requiere sesión |
+| Catálogo de servicios | `/` | Público |
+| Registro e inicio de sesión | `/login` | Público |
+| Agendar cita y ver las propias | `/agendar` | Requiere sesión |
 
-Está escrito en HTML, CSS y JavaScript sin dependencias externas: no usa CDN ni paquetes, así que
-funciona sin conexión mientras la API esté en marcha.
+Los errores de la API se muestran con un mensaje legible: `401` invita a acceder de nuevo, `403`
+explica la falta de permisos, `409` describe el conflicto de horario y `422` enumera los campos
+inválidos uno por uno.
 
-El token se guarda en `sessionStorage`, de modo que la sesión termina al cerrar la pestaña. Los
-errores de la API se muestran con su código y un mensaje legible: `401` invita a acceder de nuevo,
-`403` explica la falta de permisos, `409` describe el conflicto de horario y `422` enumera los
-campos inválidos.
+### La sesión
+
+El token de acceso viaja en una **cookie httpOnly**, no en el almacenamiento del navegador. La
+diferencia importa: `localStorage` y `sessionStorage` son legibles por cualquier script de la
+página, de modo que una inyección de código bastaría para llevarse la sesión. Marcada `httpOnly`,
+la cookie queda fuera del alcance del JavaScript, incluido el que un atacante consiguiera
+introducir.
+
+Como consecuencia, el cliente no puede consultar el token para saber si sigue vigente: lo pregunta
+al servidor con `GET /auth/yo`, que valida firma y vigencia. Esto detecta además las sesiones ya
+caducadas, que antes se daban por buenas hasta que fallaba la primera petición.
+
+Cerrar sesión exige `POST /auth/logout`, porque una cookie httpOnly sólo puede borrarla quien la
+puso.
+
+**Sobre CSRF.** La cookie va con `SameSite=Lax`, que impide al navegador enviarla en peticiones
+originadas por otro sitio, salvo en navegaciones de primer nivel con `GET`. Como ninguna operación
+de escritura de esta API usa `GET`, esa excepción no es aprovechable, y no hace falta un token CSRF
+aparte. La conclusión depende de que el cliente y la API compartan origen: si el cliente se
+desplegara en otro dominio, la cookie necesitaría `SameSite=None` y entonces sí habría que añadir
+protección CSRF explícita.
 
 ## Pruebas
 

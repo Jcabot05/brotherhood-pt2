@@ -7,16 +7,16 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-import { ErrorApi, api } from '../api/cliente';
+import { api } from '../api/cliente';
 import { useSesion } from '../api/sesion';
+import { useFalloApi } from '../api/useFalloApi';
 import Mensaje from '../componentes/Mensaje';
 
 export default function Acceso() {
     const [vista, setVista] = useState('login');
     const [enviando, setEnviando] = useState(false);
-    const [error, setError] = useState(null);
-    const [detalles, setDetalles] = useState([]);
     const [exito, setExito] = useState(null);
+    const { error, detalles, manejarFallo, limpiar } = useFalloApi();
 
     const { usuario, entrar } = useSesion();
     const navegar = useNavigate();
@@ -32,15 +32,13 @@ export default function Acceso() {
 
     function cambiarVista(nueva) {
         setVista(nueva);
-        setError(null);
-        setDetalles([]);
+        limpiar();
     }
 
     async function enviar(evento, accion) {
         evento.preventDefault();
         setEnviando(true);
-        setError(null);
-        setDetalles([]);
+        limpiar();
 
         const campos = Object.fromEntries(new FormData(evento.target));
 
@@ -50,12 +48,7 @@ export default function Acceso() {
             setExito('Acceso correcto. Redirigiendo…');
             navegar(destino, { replace: true });
         } catch (fallo) {
-            if (fallo instanceof ErrorApi) {
-                setError(fallo.mensaje);
-                setDetalles(fallo.camposInvalidos);
-            } else {
-                setError('No pudimos completar la operación. Intente de nuevo.');
-            }
+            await manejarFallo(fallo);
         } finally {
             setEnviando(false);
         }

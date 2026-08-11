@@ -9,3 +9,4 @@ __pycache__/
 node_modules/
 cliente/dist/
 static_build/
+.vscode/

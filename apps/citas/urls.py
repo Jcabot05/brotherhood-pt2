@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from apps.citas import views
+from apps.citas import disponibilidad, views
 
 urlpatterns = [
     path("", views.ListaCitas.as_view(), name="citas"),
@@ -10,7 +10,7 @@ urlpatterns = [
     # por el conversor de entero.
     path(
         "disponibilidad",
-        views.consultar_disponibilidad,
+        disponibilidad.consultar_disponibilidad,
         name="disponibilidad",
     ),
     path("<int:id_cita>", views.DetalleCita.as_view(), name="cita-detalle"),

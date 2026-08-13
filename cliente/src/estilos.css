@@ -212,6 +212,22 @@ body {
     letter-spacing: -.02em;
 }
 
+.servicio-reservar { margin-top: 1rem; align-self: flex-start; }
+
+/* El nombre del servicio acompaña al botón sólo para quien usa lector de
+   pantalla: en la tarjeta ya está escrito justo encima. */
+.visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* --- Formularios ----------------------------------------------------- */
 
 .formulario { max-width: 460px; }

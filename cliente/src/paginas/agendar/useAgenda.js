@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, hoyLocal } from '../../api/cliente';
 import { useFalloApi } from '../../api/useFalloApi';
 
-export function useAgenda(usuario, refrescarSesion) {
+export function useAgenda(usuario, refrescarSesion, idServicioInicial = null) {
     const { error, detalles, manejarFallo, limpiar } = useFalloApi(refrescarSesion);
 
     const [barberos, setBarberos] = useState([]);
@@ -39,13 +39,23 @@ export function useAgenda(usuario, refrescarSesion) {
                     setIdBarbero(String(listaBarberos[0].id_barbero));
                 }
                 if (listaServicios.length > 0) {
-                    setIdServicio(String(listaServicios[0].id_servicio));
+                    // El catálogo puede enviar un servicio ya elegido. Se
+                    // comprueba contra la lista: un identificador inventado en
+                    // la URL debe caer en el primero, no dejar el campo vacío.
+                    const pedido = listaServicios.some(
+                        s => String(s.id_servicio) === String(idServicioInicial)
+                    );
+                    setIdServicio(
+                        pedido
+                            ? String(idServicioInicial)
+                            : String(listaServicios[0].id_servicio)
+                    );
                 }
             })
             .catch(manejarFallo);
 
         cargarCitas();
-    }, [usuario, cargarCitas, manejarFallo]);
+    }, [usuario, cargarCitas, manejarFallo, idServicioInicial]);
 
     const cargarHorarios = useCallback(async () => {
         if (!idBarbero || !idServicio || !fecha) return;

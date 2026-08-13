@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { useSesion } from '../api/sesion';
 import Mensaje from '../componentes/Mensaje';
@@ -8,7 +8,9 @@ import { useAgenda } from './agendar/useAgenda';
 
 export default function Agendar() {
     const { usuario, cargando: cargandoSesion, refrescar } = useSesion();
-    const agenda = useAgenda(usuario, refrescar);
+    const [parametros] = useSearchParams();
+    const servicioPedido = parametros.get('servicio');
+    const agenda = useAgenda(usuario, refrescar, servicioPedido);
 
     if (cargandoSesion) {
         return (
@@ -26,7 +28,16 @@ export default function Agendar() {
                 </div>
                 <div className="tarjeta">
                     <p>Necesita iniciar sesión para agendar una cita.</p>
-                    <Link className="boton" to="/login?destino=/agendar">
+                    {/* El servicio elegido en el catálogo viaja en el destino,
+                        de modo que no se pierda al identificarse. */}
+                    <Link
+                        className="boton"
+                        to={`/login?destino=${encodeURIComponent(
+                            servicioPedido
+                                ? `/agendar?servicio=${servicioPedido}`
+                                : '/agendar'
+                        )}`}
+                    >
                         Acceder
                     </Link>
                 </div>

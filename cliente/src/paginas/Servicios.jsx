@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ErrorApi, api, formatearPrecio } from '../api/cliente';
 import { imagenDeServicio } from '../api/imagenes';
@@ -66,6 +67,15 @@ export default function Servicios() {
                                 <h2>{servicio.nombre}</h2>
                                 <p className="duracion">{servicio.duracion_min} minutos</p>
                                 <p className="precio">{formatearPrecio(servicio.precio)}</p>
+                                <Link
+                                    className="boton boton-secundario servicio-reservar"
+                                    to={`/agendar?servicio=${servicio.id_servicio}`}
+                                >
+                                    Reservar
+                                    <span className="visualmente-oculto">
+                                        {` ${servicio.nombre}`}
+                                    </span>
+                                </Link>
                             </div>
                         </article>
                     ))}

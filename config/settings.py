@@ -47,6 +47,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Sirve los archivos estáticos sin depender de un servidor aparte. Va
+    # justo después del middleware de seguridad, como pide su documentación.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -173,7 +176,51 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# --- Seguridad del transporte ----------------------------------------------
+# Sólo se aplica fuera de desarrollo: en local la aplicación se sirve por
+# http://127.0.0.1, donde exigir HTTPS impediría entrar.
+
+if not DEBUG:
+    # La redirección puede desactivarse para comprobar en local una compilación
+    # de producción, donde no hay certificado y el navegador no puede anunciar
+    # el protocolo original. En el despliegue se deja activada.
+    SECURE_SSL_REDIRECT = (
+        os.getenv("DJANGO_REDIRIGIR_A_HTTPS", "true").lower() == "true"
+    )
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Un año, con los subdominios incluidos: el navegador recuerda que este
+    # sitio sólo se visita por HTTPS y deja de intentar la primera petición en
+    # claro. Conviene desplegar antes con un plazo corto y ampliarlo después,
+    # porque hasta que expire no hay forma de volver atrás.
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # La plataforma termina el TLS y reenvía la petición por HTTP interno;
+    # sin esta cabecera Django la vería insegura y entraría en un bucle de
+    # redirecciones.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
+
 STATIC_URL = "static/"
+
+# Destino de `collectstatic`. La plataforma lo ejecuta al desplegar y
+# WhiteNoise sirve el resultado.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        # Comprime y añade un hash al nombre de cada archivo, de modo que
+        # puedan cachearse indefinidamente sin servir una versión vieja.
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # --- Cliente web -----------------------------------------------------------
 # Django sirve el build de React, de modo que la aplicación entera vive en un

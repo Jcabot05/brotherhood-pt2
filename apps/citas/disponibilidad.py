@@ -23,7 +23,32 @@ from apps.citas.reglas import verificar_referencias
         OpenApiParameter("id_barbero", int, required=True),
         OpenApiParameter("id_servicio", int, required=True),
         OpenApiParameter("fecha", str, required=True, description="AAAA-MM-DD"),
-    ]
+    ],
+    # La respuesta se arma a mano, sin serializer, así que su forma se declara
+    # aquí para que la documentación no la anuncie como vacía.
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "fecha": {"type": "string", "format": "date"},
+                "id_barbero": {"type": "integer"},
+                "id_servicio": {"type": "integer"},
+                "duracion_min": {"type": "integer"},
+                "horario_atencion": {"type": "string"},
+                "atiende": {"type": "boolean"},
+                "horarios": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "inicio": {"type": "string", "format": "date-time"},
+                            "etiqueta": {"type": "string"},
+                        },
+                    },
+                },
+            },
+        }
+    },
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])

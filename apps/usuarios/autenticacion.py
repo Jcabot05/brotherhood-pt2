@@ -11,6 +11,7 @@ porque es lo que permite usar el botón "Authorize" de la documentación.
 """
 
 from django.conf import settings
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -66,3 +67,36 @@ class AutenticacionCookieOBearer(BaseAuthentication):
             raise AuthenticationFailed("La cuenta no existe o está desactivada.")
 
         return (usuario, token)
+
+
+class EsquemaDeAutenticacion(OpenApiAuthenticationExtension):
+    """Describe la autenticación en el esquema de la documentación.
+
+    Sin esta clase, drf_spectacular no sabe leer una autenticación propia y
+    publica cada endpoint como si no exigiera credencial.
+    """
+
+    target_class = AutenticacionCookieOBearer
+    name = ["CookieDeSesion", "TokenBearer"]
+
+    def get_security_definition(self, auto_schema):
+        return [
+            {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": settings.COOKIE_SESION,
+                "description": (
+                    "Cookie httpOnly que el servidor entrega al iniciar sesión. "
+                    "El navegador la adjunta sola."
+                ),
+            },
+            {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": (
+                    "Alternativa para clientes que no son navegadores. "
+                    "Use el token que devuelve /auth/login."
+                ),
+            },
+        ]

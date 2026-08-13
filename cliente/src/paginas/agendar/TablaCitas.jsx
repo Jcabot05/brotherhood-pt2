@@ -1,8 +1,3 @@
-/* Listado de las citas del cliente, con la opción de cancelar.
-
-   Sólo se cancelan las agendadas: una cita cancelada o atendida ya cerró su
-   ciclo (RN-11). */
-
 import { formatearFecha } from '../../api/cliente';
 
 export default function TablaCitas({ citas, barberos, servicios, onCancelar }) {

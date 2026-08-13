@@ -22,30 +22,21 @@ from apps.usuarios.serializers import (
 
 
 def _adjuntar_cookie(respuesta, token: str, expira_en: int):
-    """Entrega el token como cookie httpOnly.
-
-    `httponly` es el punto de todo esto: impide que el JavaScript de la página
-    lea el token, de modo que una inyección de script no basta para robar la
-    sesión.
-    """
+    """RN-06: entrega el token como cookie httpOnly."""
     respuesta.set_cookie(
         key=settings.COOKIE_SESION,
         value=token,
         httponly=True,
         secure=settings.COOKIE_SEGURA,
         samesite=settings.COOKIE_SAMESITE,
-        max_age=expira_en,  # se alinea con la vigencia del token (RN-06)
+        max_age=expira_en,
         path="/",
     )
     return respuesta
 
 
 def _respuesta_de_acceso(usuario: Usuario, codigo: int):
-    """Arma la respuesta de acceso a partir de una cuenta ya verificada.
-
-    El token viaja en la cookie y también en el cuerpo: lo primero es para el
-    navegador, lo segundo para los clientes de API que usan cabecera Bearer.
-    """
+    """Arma la respuesta de acceso a partir de una cuenta ya verificada."""
     token, expira_en = crear_token(usuario.id_usuario, usuario.correo, usuario.rol)
     respuesta = Response(
         {
@@ -63,11 +54,7 @@ def _respuesta_de_acceso(usuario: Usuario, codigo: int):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def registrar(request):
-    """Crea una cuenta de acceso y su ficha de cliente.
-
-    El rol siempre es `cliente`: la creación de administradores no se expone
-    por la API, se hace directamente en la base de datos (RN-04).
-    """
+    """RN-04: crea una cuenta de rol cliente y su ficha."""
     datos = RegistroSerializer(data=request.data)
     datos.is_valid(raise_exception=True)
     validados = datos.validated_data
@@ -79,8 +66,6 @@ def registrar(request):
             status=status.HTTP_409_CONFLICT,
         )
 
-    # Cuenta y ficha se crean en la misma transacción: si la ficha falla, la
-    # cuenta no queda registrada a medias.
     with transaction.atomic():
         usuario = Usuario.objects.create(
             correo=correo,
@@ -102,12 +87,7 @@ def registrar(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def iniciar_sesion(request):
-    """Verifica las credenciales y abre la sesión.
-
-    La respuesta es la misma tanto si el correo no existe como si la
-    contraseña es incorrecta, para no revelar qué correos están registrados
-    (RN-20).
-    """
+    """RN-20: verifica las credenciales sin revelar qué correos existen."""
     datos = CredencialesSerializer(data=request.data)
     datos.is_valid(raise_exception=True)
     validados = datos.validated_data
@@ -137,12 +117,7 @@ def iniciar_sesion(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def cerrar_sesion(request):
-    """Borra la cookie de sesión.
-
-    No exige token: cerrar una sesión ya expirada debe ser idempotente, no un
-    error. Los atributos deben coincidir con los de `set_cookie`, o el
-    navegador no reconoce la cookie como la misma y no la borra.
-    """
+    """Borra la cookie de sesión. Es idempotente y no exige token."""
     respuesta = Response(status=status.HTTP_204_NO_CONTENT)
     respuesta.delete_cookie(
         key=settings.COOKIE_SESION,
@@ -156,9 +131,5 @@ def cerrar_sesion(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def consultar_cuenta(request):
-    """Devuelve los datos de la cuenta dueña de la sesión.
-
-    Es el modo en que el frontend comprueba si la sesión sigue viva, ahora que
-    no puede leer el token (RN-06).
-    """
+    """Devuelve los datos de la cuenta dueña de la sesión."""
     return Response(UsuarioSerializer(request.user).data)

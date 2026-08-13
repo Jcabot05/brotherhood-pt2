@@ -1,8 +1,3 @@
-/* Estado y operaciones de la página de agendar.
-
-   Reúne las opciones del formulario, los horarios libres y las citas del
-   cliente, de modo que la página se ocupe sólo de presentarlos. */
-
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, hoyLocal } from '../../api/cliente';
@@ -33,7 +28,6 @@ export function useAgenda(usuario, refrescarSesion) {
         }
     }, [manejarFallo]);
 
-    // Opciones del formulario y citas ya agendadas.
     useEffect(() => {
         if (!usuario) return;
 
@@ -53,9 +47,6 @@ export function useAgenda(usuario, refrescarSesion) {
         cargarCitas();
     }, [usuario, cargarCitas, manejarFallo]);
 
-    /* Horarios libres. Se recalculan al cambiar barbero, servicio o día: así
-       quien reserva elige entre opciones válidas en lugar de descubrir el
-       conflicto al enviar el formulario. */
     const cargarHorarios = useCallback(async () => {
         if (!idBarbero || !idServicio || !fecha) return;
 
@@ -98,9 +89,6 @@ export function useAgenda(usuario, refrescarSesion) {
         setExito(null);
 
         try {
-            // `fecha_hora` se devuelve tal cual la entregó el servidor, en UTC
-            // (RN-17). El cuerpo no lleva `id_cliente`: lo deduce la API de la
-            // sesión.
             await api.agendar({
                 id_barbero: Number(idBarbero),
                 id_servicio: Number(idServicio),

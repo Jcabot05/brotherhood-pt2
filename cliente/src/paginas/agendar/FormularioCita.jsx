@@ -1,5 +1,3 @@
-/* Formulario de reserva: barbero, servicio, día y horario. */
-
 import { formatearPrecio, hoyLocal } from '../../api/cliente';
 
 export default function FormularioCita({

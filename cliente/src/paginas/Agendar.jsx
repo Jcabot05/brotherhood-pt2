@@ -1,9 +1,3 @@
-/* HU-02: agendar una cita y consultar las propias.
-
-   Exige sesión (RN-02). La cita se asocia siempre al dueño de la sesión, así
-   que el formulario no envía `id_cliente`: lo resuelve el servidor a partir
-   de la cookie (RN-03). */
-
 import { Link } from 'react-router-dom';
 
 import { useSesion } from '../api/sesion';
@@ -24,8 +18,6 @@ export default function Agendar() {
         );
     }
 
-    // Sin sesión no se muestra el formulario. El servidor lo rechazaría de
-    // todos modos (RN-02); esto evita el viaje en balde.
     if (!usuario) {
         return (
             <main className="contenido">

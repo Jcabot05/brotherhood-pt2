@@ -1,9 +1,4 @@
-"""Reglas de negocio de la agenda.
-
-Concentra las comprobaciones que deciden si una cita puede existir, separadas
-de las vistas para que el transporte HTTP no se mezcle con el negocio. Las
-vistas traducen estas excepciones a códigos de respuesta.
-"""
+"""Reglas de negocio de la agenda."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -45,11 +40,7 @@ def asegurar_futuro(fecha_hora: datetime) -> datetime:
 
 
 def asegurar_horario_valido(inicio: datetime, duracion_min: int) -> None:
-    """RN-21 a RN-23: la cita debe caber en el horario de atención.
-
-    Traduce el motivo concreto a un 422, de modo que quien reserva sepa por qué
-    ese horario no sirve en lugar de recibir un rechazo genérico (RN-19).
-    """
+    """RN-21 a RN-23: la cita debe caber en el horario de atención."""
     try:
         verificar_horario(inicio, duracion_min)
     except HorarioInvalido as error:
@@ -73,22 +64,9 @@ def citas_solapadas(
     duracion_min: int,
     id_cita_excluida: int | None = None,
 ):
-    """Citas del barbero cuyo intervalo choca con el solicitado.
-
-    El intervalo de una cita va desde su fecha/hora hasta esa hora más la
-    duración de su servicio. Dos intervalos se solapan cuando cada uno empieza
-    antes de que termine el otro; comparar sólo la hora de inicio dejaría pasar
-    una cita que arranca en mitad de otra.
-
-    Sólo compiten las citas agendadas: una cancelada o atendida libera su
-    horario (RN-11).
-    """
+    """Citas agendadas del barbero cuyo intervalo choca con el solicitado."""
     fin = inicio + timedelta(minutes=duracion_min)
 
-    # El fin de cada cita existente se calcula en la base: su hora de inicio
-    # más la duración de su servicio, como intervalo de PostgreSQL.
-    # `output_field` es obligatorio: Django no puede deducir el tipo de
-    # multiplicar un intervalo por un entero.
     duracion_como_intervalo = ExpressionWrapper(
         timedelta(minutes=1) * F("servicio__duracion_min"),
         output_field=DurationField(),
@@ -132,10 +110,7 @@ def verificar_disponibilidad(
 
 
 def exigir_propiedad(cita: Cita, usuario) -> None:
-    """RN-03: un cliente sólo opera sobre sus propias citas.
-
-    El administrador queda exento: gestiona la agenda completa del negocio.
-    """
+    """RN-03: un cliente sólo opera sobre sus propias citas."""
     if usuario.es_admin:
         return
 
@@ -147,6 +122,7 @@ def exigir_propiedad(cita: Cita, usuario) -> None:
 
 
 def buscar_cita(id_cita: int) -> Cita:
+    """Cita por su identificador."""
     cita = Cita.objects.filter(pk=id_cita).first()
     if cita is None:
         raise NotFound(f"No existe una cita con id {id_cita}.")

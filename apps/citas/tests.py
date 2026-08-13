@@ -1,12 +1,4 @@
-"""Pruebas del horario de atención (RN-21, RN-22, RN-23).
-
-Se ejercita `apps.citas.agenda`, que decide si una cita cabe en el horario del
-negocio. Es lógica pura sobre fechas, así que las pruebas heredan de
-`SimpleTestCase` y no tocan la base de datos.
-
-Las fechas se construyen en la zona local de la barbería: la comparación con el
-horario de atención ocurre en ese huso, no en UTC (RN-17).
-"""
+"""Pruebas del horario de atención (RN-21, RN-22, RN-23)."""
 
 from datetime import datetime, timedelta
 
@@ -23,7 +15,6 @@ from apps.citas.agenda import (
     verificar_horario,
 )
 
-# Semana de referencia: lunes 5 de enero de 2026 a domingo 11.
 LUNES = datetime(2026, 1, 5).date()
 DOMINGO = datetime(2026, 1, 11).date()
 
@@ -68,7 +59,6 @@ class FranjaDeAtencion(SimpleTestCase):
         self.assertIn("cierra", str(fallo.exception))
 
     def test_rechaza_servicio_que_no_termina_antes_del_cierre(self):
-        """El inicio es válido, pero la duración se pasa de la hora de cierre."""
         inicio = momento(LUNES, HORA_CIERRE - 1)
         with self.assertRaises(HorarioInvalido) as fallo:
             verificar_horario(inicio, 120)
@@ -104,11 +94,6 @@ class HorariosGenerados(SimpleTestCase):
     """Los horarios ofrecidos deben ser reservables uno por uno."""
 
     def test_todos_los_horarios_pasan_la_verificacion(self):
-        """Coherencia entre lo que se ofrece y lo que se acepta.
-
-        Si un horario generado fuera rechazado al reservar, quien agenda vería
-        un error tras elegir una opción que la propia interfaz le ofreció.
-        """
         for inicio in horarios_del_dia(LUNES, 30):
             verificar_horario(inicio, 30)
 
@@ -122,7 +107,6 @@ class HorariosGenerados(SimpleTestCase):
             self.assertEqual(siguiente - previo, timedelta(minutes=INTERVALO_MIN))
 
     def test_el_ultimo_termina_antes_del_cierre(self):
-        """RN-23 aplicado a la generación, no solo a la verificación."""
         duracion = 60
         ultimo = horarios_del_dia(LUNES, duracion)[-1]
         fin = (ultimo + timedelta(minutes=duracion)).astimezone(ZONA_LOCAL)
@@ -139,9 +123,5 @@ class ConversionDeHuso(SimpleTestCase):
     """RN-17: la base guarda en UTC; el horario se juzga en hora local."""
 
     def test_un_instante_utc_se_juzga_en_hora_local(self):
-        """El mismo instante, expresado en UTC, debe aceptarse igual.
-
-        Comparar sin convertir rechazaría una cita perfectamente válida.
-        """
         local = momento(LUNES, HORA_APERTURA + 1)
         verificar_horario(local.astimezone(tz=None), 30)

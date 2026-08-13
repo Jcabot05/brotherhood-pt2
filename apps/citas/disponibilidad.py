@@ -1,8 +1,4 @@
-"""Consulta de horarios libres.
-
-Cruza el horario de atención (RN-21 a RN-23) con las citas ya agendadas
-(RN-07) para ofrecer sólo franjas reservables.
-"""
+"""Consulta de horarios libres."""
 
 from datetime import datetime, time, timedelta, timezone
 
@@ -32,14 +28,7 @@ from apps.citas.reglas import verificar_referencias
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def consultar_disponibilidad(request):
-    """Devuelve los horarios en que ese barbero puede atender ese servicio.
-
-    Quien reserva elige entre opciones válidas en lugar de descubrir los
-    conflictos al enviar el formulario.
-
-    Es de acceso público: consultar disponibilidad no compromete la agenda ni
-    revela datos de otros clientes, sólo qué franjas están libres.
-    """
+    """RN-07 y RN-21 a RN-23: horarios en que el barbero puede atender."""
     parametros = request.query_params
     for requerido in ("id_barbero", "id_servicio", "fecha"):
         if not parametros.get(requerido):
@@ -63,15 +52,12 @@ def consultar_disponibilidad(request):
         "horario_atencion": descripcion_horario(),
     }
 
-    # Día no laborable: se responde con la lista vacía y el motivo, no con un
-    # error. No hay nada malo en la petición.
     if not es_dia_laborable(dia):
         return Response({**base, "atiende": False, "horarios": []})
 
     candidatos = horarios_del_dia(dia, duracion)
     ahora = datetime.now(timezone.utc)
 
-    # Una sola consulta para todo el día, en lugar de una por horario.
     desde = datetime.combine(dia, time.min, tzinfo=timezone.utc)
     hasta = desde + timedelta(days=2)
     ocupados = [

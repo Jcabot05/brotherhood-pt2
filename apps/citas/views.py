@@ -45,11 +45,7 @@ class ListaCitas(APIView):
         responses={200: CitaSerializer(many=True)},
     )
     def get(self, request):
-        """RF-06: lista las citas con filtros por barbero, fecha y estado.
-
-        Un cliente ve únicamente sus propias citas (RN-03); el administrador ve
-        la agenda completa.
-        """
+        """RF-06 y RN-03: lista las citas que el solicitante puede ver."""
         consulta = Cita.objects.all()
 
         if not request.user.es_admin:
@@ -77,12 +73,7 @@ class ListaCitas(APIView):
 
     @extend_schema(request=CitaCrearSerializer, responses={201: CitaSerializer})
     def post(self, request):
-        """RF-05: agenda una cita a nombre del cliente autenticado.
-
-        La cita se asocia siempre al dueño de la sesión (RN-03), nace en estado
-        agendada (RN-10) y sólo se crea si el horario está libre (RN-07) y es
-        futuro (RN-08).
-        """
+        """RF-05: agenda una cita a nombre del cliente autenticado."""
         datos = CitaCrearSerializer(data=request.data)
         datos.is_valid(raise_exception=True)
         validados = datos.validated_data
@@ -125,11 +116,7 @@ class DetalleCita(APIView):
 
     @extend_schema(request=CitaActualizarSerializer, responses={200: CitaSerializer})
     def put(self, request, id_cita: int):
-        """RF-08: reprograma una cita.
-
-        Sólo se reprograma una cita agendada (RN-11): una cancelada o atendida
-        ya cerró su ciclo.
-        """
+        """RF-08 y RN-11: reprograma una cita que siga agendada."""
         cita = buscar_cita(id_cita)
         exigir_propiedad(cita, request.user)
 
@@ -148,13 +135,10 @@ class DetalleCita(APIView):
         datos.is_valid(raise_exception=True)
 
         inicio = asegurar_futuro(datos.validated_data["fecha_hora"])
-        # El barbero y el servicio no cambian al reprogramar: se conservan los
-        # de la cita y sólo se valida que el nuevo horario sirva.
         duracion = cita.servicio.duracion_min
         asegurar_horario_valido(inicio, duracion)
 
         try:
-            # Se excluye a sí misma: una cita no se solapa consigo.
             verificar_disponibilidad(
                 cita.barbero_id,
                 inicio,
@@ -171,15 +155,10 @@ class DetalleCita(APIView):
 
     @extend_schema(responses={200: CitaSerializer})
     def delete(self, request, id_cita: int):
-        """RF-08: cancela una cita.
-
-        Es un borrado lógico: la cita queda en estado cancelada para preservar
-        el historial (RN-12), nunca se elimina de la base.
-        """
+        """RF-08 y RN-12: cancela una cita mediante borrado lógico."""
         cita = buscar_cita(id_cita)
         exigir_propiedad(cita, request.user)
 
-        # Cancelar lo ya cancelado no es un error: la operación es idempotente.
         if cita.estado == Cita.CANCELADA:
             return Response(CitaSerializer(cita).data)
 
@@ -198,10 +177,7 @@ class DetalleCita(APIView):
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def cambiar_estado(request, id_cita: int):
-    """RF-09: cambia el estado de una cita.
-
-    Marcar como atendida es potestad del negocio, no del cliente (RN-04).
-    """
+    """RF-09 y RN-04: cambia el estado de una cita."""
     cita = buscar_cita(id_cita)
     exigir_propiedad(cita, request.user)
 
@@ -212,7 +188,6 @@ def cambiar_estado(request, id_cita: int):
     if nuevo == Cita.ATENDIDA and not request.user.es_admin:
         raise PermissionDenied("Sólo la barbería puede marcar una cita como atendida.")
 
-    # Reactivar una cita exige que su horario siga siendo válido y esté libre.
     if nuevo == Cita.AGENDADA and cita.estado != Cita.AGENDADA:
         inicio = asegurar_futuro(cita.fecha_hora)
         asegurar_horario_valido(inicio, cita.servicio.duracion_min)

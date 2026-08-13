@@ -1,9 +1,3 @@
-/* Traducción de un fallo de la API a mensajes para la interfaz.
-
-   Un 401 se trata aparte: significa que la sesión caducó, así que además de
-   avisar hay que revalidarla contra el servidor para que la interfaz refleje
-   la realidad. */
-
 import { useCallback, useState } from 'react';
 
 import { ErrorApi } from './cliente';

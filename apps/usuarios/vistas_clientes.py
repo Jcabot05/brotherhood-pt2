@@ -1,9 +1,4 @@
-"""Gestión de fichas de cliente (RF-01).
-
-El listado completo expone nombre, teléfono y correo de toda la clientela, y
-el borrado arrastra en cascada el historial de citas. Ambas cosas quedan
-restringidas a administradores (RN-02, RN-04).
-"""
+"""Gestión de fichas de cliente (RF-01)."""
 
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
@@ -17,7 +12,7 @@ from apps.usuarios.serializers import ClienteCrearSerializer, ClienteSerializer
 
 
 class ListaClientes(ListCreateAPIView):
-    """Alta pública de clientes; listado sólo para administradores."""
+    """RN-02: alta pública de clientes; listado sólo para administradores."""
 
     queryset = Cliente.objects.order_by("id_cliente")
 
@@ -27,8 +22,6 @@ class ListaClientes(ListCreateAPIView):
         return ClienteSerializer
 
     def get_permissions(self):
-        # El alta queda abierta porque es el punto de entrada de un cliente
-        # nuevo; el listado no, porque son datos personales de terceros.
         return [AllowAny()] if self.request.method == "POST" else [EsAdmin()]
 
     def create(self, request, *args, **kwargs):
@@ -48,18 +41,17 @@ class DetalleCliente(RetrieveUpdateDestroyAPIView):
     lookup_url_kwarg = "id_cliente"
 
     def get_object(self):
+        """RN-03: un cliente sólo alcanza su propia ficha."""
         cliente = super().get_object()
         usuario = self.request.user
 
-        # Un cliente sólo alcanza su propia ficha; el administrador, todas
-        # (RN-03).
         if not usuario.es_admin and cliente.usuario_id != usuario.id_usuario:
             raise PermissionDenied("No puede acceder a la ficha de otro cliente.")
 
         return cliente
 
     def get_permissions(self):
-        # Borrar arrastra las citas en cascada: sólo administradores.
+        """RN-04: borrar arrastra las citas en cascada, sólo administradores."""
         return [EsAdmin()] if self.request.method == "DELETE" else [IsAuthenticated()]
 
     def destroy(self, request, *args, **kwargs):

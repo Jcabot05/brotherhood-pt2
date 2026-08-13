@@ -61,7 +61,7 @@ export default function Agendar() {
                 onEnviar={agenda.agendar}
             />
 
-            <h2>Mis citas</h2>
+            <h2 className="seccion-titulo">Mis citas</h2>
 
             <TablaCitas
                 citas={agenda.citas}

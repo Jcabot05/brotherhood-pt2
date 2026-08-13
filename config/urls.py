@@ -65,6 +65,13 @@ urlpatterns = [
         serve,
         {"document_root": settings.CLIENTE_BUILD / "assets"},
     ),
+    # Fotografías del catálogo. Sin esta ruta las pediría el catch-all, que
+    # respondería con el HTML del cliente en lugar de la imagen.
+    re_path(
+        r"^servicios/(?P<path>.*\.(?:jpg|jpeg|png|webp|svg))$",
+        serve,
+        {"document_root": settings.CLIENTE_BUILD / "servicios"},
+    ),
     # Catch-all: va el último para no tapar ninguna ruta de la API.
     re_path(r"^(?P<ruta>.*)$", cliente_web),
 ]

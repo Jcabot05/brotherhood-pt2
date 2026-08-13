@@ -1,5 +1,3 @@
-/* Barra de navegación con el estado de la sesión. */
-
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
 import { useSesion } from '../api/sesion';
@@ -8,8 +6,7 @@ export default function Barra() {
     const { usuario, salir } = useSesion();
     const navegar = useNavigate();
 
-    async function cerrarSesion(evento) {
-        evento.preventDefault();
+    async function cerrarSesion() {
         await salir();
         navegar('/');
     }
@@ -28,19 +25,24 @@ export default function Barra() {
                     <NavLink to="/agendar">Agendar</NavLink>
                 </nav>
 
-                <span id="estado-sesion">
+                <span className="estado-sesion">
                     {usuario ? (
                         <>
-                            {/* React escapa el correo: no hay inyección posible. */}
                             <span className="sesion">
                                 <strong>{usuario.correo}</strong>
                             </span>
-                            <a href="#" onClick={cerrarSesion}>
+                            <button
+                                type="button"
+                                className="enlace-accion"
+                                onClick={cerrarSesion}
+                            >
                                 Cerrar sesión
-                            </a>
+                            </button>
                         </>
                     ) : (
-                        <Link to="/login">Iniciar sesión</Link>
+                        <Link className="boton boton-compacto" to="/login">
+                            Iniciar sesión
+                        </Link>
                     )}
                 </span>
             </div>

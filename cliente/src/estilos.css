@@ -1,20 +1,26 @@
-/* Hoja de estilos del cliente web de TheBrotherhood.
-   Sin dependencias externas: la página funciona sin conexión y sin paso de
-   construcción, de modo que basta con levantar la API para verla. */
-
 :root {
     --tinta: #16130f;
     --tinta-suave: #5c554c;
     --papel: #f7f4ef;
     --superficie: #ffffff;
     --borde: #e2dcd2;
+    --borde-fuerte: #cfc6b8;
     --acento: #8b5e34;
     --acento-oscuro: #6f4a28;
+    --acento-tenue: #f2e9e0;
     --exito: #2f6f4f;
     --error: #a83232;
+    --error-oscuro: #8c2727;
+    --error-tenue: #fbeceb;
     --aviso: #8a6d1f;
-    --radio: 10px;
+
+    --radio-control: 8px;
+    --radio-tarjeta: 12px;
+    --radio-pastilla: 999px;
+
     --sombra: 0 1px 2px rgba(22, 19, 15, .06), 0 8px 24px rgba(22, 19, 15, .06);
+    --sombra-elevada: 0 4px 12px rgba(22, 19, 15, .1), 0 16px 40px rgba(22, 19, 15, .12);
+    --transicion: 160ms cubic-bezier(.16, 1, .3, 1);
 }
 
 * { box-sizing: border-box; }
@@ -25,6 +31,12 @@ body {
     color: var(--tinta);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
 }
 
 /* --- Estructura ------------------------------------------------------ */
@@ -38,9 +50,9 @@ body {
 }
 
 .barra-contenido {
-    max-width: 960px;
+    max-width: 1060px;
     margin: 0 auto;
-    padding: .9rem 1.25rem;
+    padding: .85rem 1.25rem;
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -54,8 +66,6 @@ body {
     text-decoration: none;
     color: var(--tinta);
 }
-
-.marca span { color: var(--acento); }
 
 .navegacion {
     display: flex;
@@ -71,117 +81,298 @@ body {
     font-size: .92rem;
     padding: .25rem 0;
     border-bottom: 2px solid transparent;
+    transition: color var(--transicion);
 }
 
 .navegacion a:hover { color: var(--tinta); }
-.navegacion a.activo { color: var(--tinta); border-bottom-color: var(--acento); }
 
-.contenido {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 2rem 1.25rem 4rem;
+.navegacion a.active {
+    color: var(--tinta);
+    border-bottom-color: var(--acento);
 }
 
-.encabezado { margin-bottom: 1.75rem; }
-.encabezado h1 { margin: 0 0 .35rem; font-size: 1.6rem; letter-spacing: -.02em; }
+.contenido {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+}
+
+.contenido-estrecho { max-width: 30rem; }
+
+.encabezado { margin-bottom: 2rem; }
+
+.encabezado h1 {
+    margin: 0 0 .35rem;
+    font-size: 1.75rem;
+    letter-spacing: -.025em;
+}
+
 .encabezado p { margin: 0; color: var(--tinta-suave); font-size: .95rem; }
+
+/* --- Sesión en la barra ---------------------------------------------- */
+
+.estado-sesion {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sesion { font-size: .88rem; color: var(--tinta-suave); }
+.sesion strong { color: var(--tinta); font-weight: 600; }
+
+.enlace-accion {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: .9rem;
+    color: var(--tinta-suave);
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: color var(--transicion), border-color var(--transicion);
+}
+
+.enlace-accion:hover {
+    color: var(--acento);
+    border-bottom-color: var(--acento);
+}
+
+.boton-compacto {
+    padding: .4rem .85rem;
+    font-size: .88rem;
+}
 
 /* --- Tarjetas -------------------------------------------------------- */
 
 .tarjeta {
     background: var(--superficie);
     border: 1px solid var(--borde);
-    border-radius: var(--radio);
-    padding: 1.25rem;
+    border-radius: var(--radio-tarjeta);
+    padding: 1.35rem;
     box-shadow: var(--sombra);
 }
 
 .rejilla {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.35rem;
 }
 
-.servicio h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
-.servicio .duracion { color: var(--tinta-suave); font-size: .88rem; margin: 0 0 .8rem; }
-.servicio .precio { font-size: 1.35rem; font-weight: 700; color: var(--acento); }
+/* --- Servicios ------------------------------------------------------- */
+
+.servicio {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-tarjeta);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--transicion), box-shadow var(--transicion);
+}
+
+.servicio:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-elevada);
+}
+
+.servicio-imagen {
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    object-fit: cover;
+    background: var(--acento-tenue);
+    display: block;
+}
+
+.servicio-cuerpo {
+    padding: 1.1rem 1.25rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    flex: 1;
+}
+
+.servicio h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: -.01em;
+}
+
+.servicio .duracion {
+    color: var(--tinta-suave);
+    font-size: .86rem;
+    margin: 0 0 .7rem;
+}
+
+.servicio .precio {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--acento);
+    margin: auto 0 0;
+    letter-spacing: -.02em;
+}
 
 /* --- Formularios ----------------------------------------------------- */
 
-.formulario { max-width: 420px; }
-.campo { margin-bottom: 1rem; }
+.formulario { max-width: 460px; }
+.campo { margin-bottom: 1.15rem; }
 
 .campo label {
     display: block;
     font-size: .87rem;
     font-weight: 600;
-    margin-bottom: .35rem;
+    margin-bottom: .4rem;
 }
 
 .campo input,
 .campo select {
     width: 100%;
-    padding: .6rem .7rem;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
+    padding: .65rem .75rem;
+    border: 1px solid var(--borde-fuerte);
+    border-radius: var(--radio-control);
     font: inherit;
     background: var(--superficie);
     color: var(--tinta);
+    transition: border-color var(--transicion), box-shadow var(--transicion);
 }
+
+.campo input:hover,
+.campo select:hover { border-color: var(--acento); }
 
 .campo input:focus,
 .campo select:focus {
-    outline: 2px solid var(--acento);
-    outline-offset: -1px;
+    outline: none;
     border-color: var(--acento);
+    box-shadow: 0 0 0 3px var(--acento-tenue);
 }
 
-.campo .ayuda { font-size: .8rem; color: var(--tinta-suave); margin-top: .3rem; }
+.campo .ayuda {
+    font-size: .82rem;
+    color: var(--tinta-suave);
+    margin-top: .45rem;
+}
+
+/* --- Botones --------------------------------------------------------- */
 
 .boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
     background: var(--acento);
     color: #fff;
-    border: 0;
-    border-radius: 8px;
-    padding: .65rem 1.15rem;
+    border: 1px solid var(--acento);
+    border-radius: var(--radio-control);
+    padding: .65rem 1.2rem;
     font: inherit;
     font-weight: 600;
+    font-size: .93rem;
+    line-height: 1.2;
     cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--transicion), border-color var(--transicion),
+        transform var(--transicion), color var(--transicion);
 }
 
-.boton:hover { background: var(--acento-oscuro); }
-.boton:disabled { opacity: .55; cursor: not-allowed; }
+.boton:hover { background: var(--acento-oscuro); border-color: var(--acento-oscuro); }
+.boton:active { transform: translateY(1px); }
+
+.boton:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+}
 
 .boton-secundario {
-    background: transparent;
-    color: var(--tinta-suave);
-    border: 1px solid var(--borde);
+    background: var(--superficie);
+    color: var(--tinta);
+    border-color: var(--borde-fuerte);
 }
 
-.boton-secundario:hover { background: var(--papel); color: var(--tinta); }
+.boton-secundario:hover {
+    background: var(--papel);
+    border-color: var(--tinta-suave);
+    color: var(--tinta);
+}
 
-/* Horarios reservables: una rejilla de franjas en lugar de un campo libre,
-   de modo que solo puedan elegirse horarios válidos (RN-21 a RN-23). */
+.boton-peligro {
+    background: var(--superficie);
+    color: var(--error);
+    border-color: #e4c3c0;
+}
+
+.boton-peligro:hover {
+    background: var(--error);
+    border-color: var(--error);
+    color: #fff;
+}
+
+.boton-peligro-solido {
+    background: var(--error);
+    color: #fff;
+    border-color: var(--error);
+}
+
+.boton-peligro-solido:hover {
+    background: var(--error-oscuro);
+    border-color: var(--error-oscuro);
+}
+
+/* --- Pestañas -------------------------------------------------------- */
+
+.pestanas { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
+
+.pestana {
+    padding: .45rem 1rem;
+    border: 1px solid var(--borde-fuerte);
+    background: var(--superficie);
+    border-radius: var(--radio-pastilla);
+    cursor: pointer;
+    font: inherit;
+    font-size: .9rem;
+    color: var(--tinta-suave);
+    transition: background var(--transicion), color var(--transicion),
+        border-color var(--transicion);
+}
+
+.pestana:hover { border-color: var(--acento); color: var(--acento); }
+
+.pestana.activa {
+    background: var(--tinta);
+    color: #fff;
+    border-color: var(--tinta);
+}
+
+/* --- Horarios reservables (RN-21 a RN-23) ---------------------------- */
+
 .horarios {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
     gap: .5rem;
-    margin-bottom: .5rem;
 }
 
 .horario {
-    padding: .5rem .4rem;
-    border: 1px solid var(--borde);
+    padding: .55rem .4rem;
+    border: 1px solid var(--borde-fuerte);
     background: var(--superficie);
-    border-radius: 8px;
+    border-radius: var(--radio-control);
     font: inherit;
     font-size: .88rem;
     color: var(--tinta);
     cursor: pointer;
     text-align: center;
+    transition: border-color var(--transicion), background var(--transicion),
+        color var(--transicion), transform var(--transicion);
 }
 
-.horario:hover { border-color: var(--acento); color: var(--acento); }
+.horario:hover {
+    border-color: var(--acento);
+    background: var(--acento-tenue);
+    color: var(--acento-oscuro);
+}
+
+.horario:active { transform: translateY(1px); }
 
 .horario.elegido {
     background: var(--acento);
@@ -190,98 +381,177 @@ body {
     font-weight: 600;
 }
 
-.pestanas { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
-
-.pestana {
-    padding: .45rem .9rem;
-    border: 1px solid var(--borde);
-    background: var(--superficie);
-    border-radius: 999px;
-    cursor: pointer;
-    font: inherit;
-    font-size: .9rem;
+.horarios-vacio {
+    padding: 1rem;
+    border: 1px dashed var(--borde-fuerte);
+    border-radius: var(--radio-control);
+    text-align: center;
     color: var(--tinta-suave);
+    font-size: .88rem;
 }
-
-.pestana.activa { background: var(--tinta); color: #fff; border-color: var(--tinta); }
 
 /* --- Mensajes -------------------------------------------------------- */
 
 .mensaje {
-    padding: .75rem .9rem;
-    border-radius: 8px;
+    padding: .8rem .95rem;
+    border-radius: var(--radio-control);
     font-size: .9rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.15rem;
     border: 1px solid transparent;
 }
 
 .mensaje.exito { background: #eaf4ee; color: var(--exito); border-color: #cfe6d9; }
-.mensaje.error { background: #fbeceb; color: var(--error); border-color: #f2d4d1; }
+.mensaje.error { background: var(--error-tenue); color: var(--error); border-color: #f2d4d1; }
 .mensaje.aviso { background: #fbf5e2; color: var(--aviso); border-color: #eee0b8; }
-.mensaje .codigo { font-weight: 700; }
-.mensaje ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+.mensaje ul { margin: .45rem 0 0; padding-left: 1.1rem; }
 
 .vacio {
     text-align: center;
-    padding: 2.5rem 1rem;
+    padding: 3rem 1rem;
     color: var(--tinta-suave);
-    border: 1px dashed var(--borde);
-    border-radius: var(--radio);
+    border: 1px dashed var(--borde-fuerte);
+    border-radius: var(--radio-tarjeta);
+    background: var(--superficie);
+}
+
+/* --- Carga ----------------------------------------------------------- */
+
+.esqueleto {
+    background: linear-gradient(
+        90deg,
+        var(--borde) 25%,
+        #eee9e1 37%,
+        var(--borde) 63%
+    );
+    background-size: 400% 100%;
+    animation: brillo 1.4s ease infinite;
+    border-radius: var(--radio-control);
+}
+
+.esqueleto-imagen { aspect-ratio: 4 / 3; border-radius: 0; }
+.esqueleto-linea { height: .85rem; margin-bottom: .55rem; }
+.esqueleto-linea.corta { width: 45%; }
+.esqueleto-linea.precio { height: 1.3rem; width: 32%; margin: .9rem 0 0; }
+
+@keyframes brillo {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .esqueleto { animation: none; }
+    .servicio:hover { transform: none; }
+    * { transition-duration: .01ms !important; }
 }
 
 /* --- Tabla ----------------------------------------------------------- */
 
-.tabla-envoltura { overflow-x: auto; }
+.tabla-envoltura {
+    overflow-x: auto;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-tarjeta);
+    box-shadow: var(--sombra);
+}
 
 table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 
 th, td {
     text-align: left;
-    padding: .65rem .75rem;
+    padding: .8rem 1rem;
     border-bottom: 1px solid var(--borde);
 }
 
-th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-suave); }
+thead th { background: var(--papel); }
+tbody tr:last-child td { border-bottom: 0; }
+
+th {
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--tinta-suave);
+    font-weight: 600;
+}
+
+.columna-accion { width: 1%; white-space: nowrap; text-align: right; }
 
 .etiqueta {
     display: inline-block;
-    padding: .15rem .55rem;
-    border-radius: 999px;
+    padding: .2rem .6rem;
+    border-radius: var(--radio-pastilla);
     font-size: .78rem;
     font-weight: 600;
+    text-transform: capitalize;
 }
 
 .etiqueta.agendada { background: #e8f0fb; color: #2a5aa0; }
 .etiqueta.cancelada { background: #f3f1ee; color: var(--tinta-suave); }
 .etiqueta.atendida { background: #eaf4ee; color: var(--exito); }
 
+/* --- Diálogo de confirmación ----------------------------------------- */
+
+.dialogo {
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-tarjeta);
+    padding: 0;
+    max-width: 27rem;
+    width: calc(100% - 2rem);
+    background: var(--superficie);
+    color: var(--tinta);
+    box-shadow: var(--sombra-elevada);
+}
+
+.dialogo::backdrop {
+    background: rgba(22, 19, 15, .45);
+    backdrop-filter: blur(2px);
+}
+
+.dialogo-cuerpo { padding: 1.5rem 1.5rem 1.25rem; }
+
+.dialogo h2 {
+    margin: 0 0 .6rem;
+    font-size: 1.15rem;
+    letter-spacing: -.01em;
+}
+
+.dialogo p { margin: 0; color: var(--tinta-suave); font-size: .93rem; }
+
+.dialogo-detalle {
+    margin-top: 1rem;
+    padding: .85rem 1rem;
+    background: var(--papel);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-control);
+    font-size: .9rem;
+}
+
+.dialogo-detalle dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .3rem .9rem; }
+.dialogo-detalle dt { color: var(--tinta-suave); }
+.dialogo-detalle dd { margin: 0; font-weight: 600; }
+
+.dialogo-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+    padding: 1rem 1.5rem 1.5rem;
+}
+
 /* --- Utilidades ------------------------------------------------------ */
 
-/* El estado de sesión agrupa el correo y el enlace de salida, de modo que
-   conserven la separación del resto de la navegación. */
-#estado-sesion {
-    display: inline-flex;
-    align-items: center;
-    gap: 1.15rem;
+.acciones { display: flex; gap: .6rem; align-items: center; }
+
+.enlace {
+    color: var(--acento);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color var(--transicion);
 }
 
-.sesion { font-size: .88rem; color: var(--tinta-suave); }
-.sesion strong { color: var(--tinta); font-weight: 600; }
-.oculto { display: none !important; }
-.acciones { display: flex; gap: .6rem; align-items: center; margin-top: 1.25rem; }
-.nota { font-size: .85rem; color: var(--tinta-suave); margin-top: 1.5rem; }
-.nota code { background: var(--superficie); padding: .1rem .35rem; border-radius: 4px; border: 1px solid var(--borde); }
+.enlace:hover { color: var(--acento-oscuro); }
+.seccion-titulo { margin: 2.5rem 0 1rem; font-size: 1.15rem; letter-spacing: -.01em; }
+.nota { font-size: .87rem; color: var(--tinta-suave); margin-top: 2rem; }
 
-/* --- Añadidos de la versión React ----------------------------------- */
-
-/* El ancho reducido de las páginas de formulario. */
-.contenido-estrecho {
-    max-width: 30rem;
-}
-
-/* La barra de navegación usa enlaces de react-router, que llevan la clase
-   `active` en lugar de `activo`. */
-.navegacion a.active {
-    color: var(--tinta);
-    border-bottom: 2px solid var(--acento);
+@media (max-width: 520px) {
+    .dialogo-acciones { flex-direction: column-reverse; }
+    .dialogo-acciones .boton { width: 100%; }
 }

@@ -163,7 +163,9 @@ export default function Acceso() {
 
             <p className="nota">
                 Por seguridad, la sesión se cierra tras un tiempo de inactividad.{' '}
-                <Link to="/">Volver al catálogo</Link>
+                <Link className="enlace" to="/">
+                    Volver al catálogo
+                </Link>
             </p>
         </main>
     );

@@ -1,11 +1,7 @@
-/* HU-01: catálogo de servicios, de acceso público.
-
-   No requiere sesión: el visitante debe poder ver qué se ofrece y cuánto
-   cuesta antes de decidirse a crear una cuenta (RN-01). */
-
 import { useEffect, useState } from 'react';
 
 import { ErrorApi, api, formatearPrecio } from '../api/cliente';
+import { imagenDeServicio } from '../api/imagenes';
 import Mensaje from '../componentes/Mensaje';
 
 export default function Servicios() {
@@ -35,9 +31,21 @@ export default function Servicios() {
 
             <Mensaje tipo="error" texto={error} />
 
-            {cargando && <p className="vacio">Cargando el catálogo…</p>}
+            {cargando && (
+                <section className="rejilla" aria-hidden="true">
+                    {[0, 1, 2].map(indice => (
+                        <article className="servicio" key={indice}>
+                            <div className="esqueleto esqueleto-imagen" />
+                            <div className="servicio-cuerpo">
+                                <div className="esqueleto esqueleto-linea" />
+                                <div className="esqueleto esqueleto-linea corta" />
+                                <div className="esqueleto esqueleto-linea precio" />
+                            </div>
+                        </article>
+                    ))}
+                </section>
+            )}
 
-            {/* Un catálogo vacío no es un error: se informa y ya. */}
             {!cargando && !error && servicios.length === 0 && (
                 <p className="vacio">Todavía no hay servicios publicados.</p>
             )}
@@ -46,9 +54,19 @@ export default function Servicios() {
                 <section className="rejilla">
                     {servicios.map(servicio => (
                         <article className="servicio" key={servicio.id_servicio}>
-                            <h2>{servicio.nombre}</h2>
-                            <p className="duracion">{servicio.duracion_min} minutos</p>
-                            <p className="precio">{formatearPrecio(servicio.precio)}</p>
+                            <img
+                                className="servicio-imagen"
+                                src={imagenDeServicio(servicio.nombre)}
+                                alt=""
+                                loading="lazy"
+                                width="600"
+                                height="450"
+                            />
+                            <div className="servicio-cuerpo">
+                                <h2>{servicio.nombre}</h2>
+                                <p className="duracion">{servicio.duracion_min} minutos</p>
+                                <p className="precio">{formatearPrecio(servicio.precio)}</p>
+                            </div>
                         </article>
                     ))}
                 </section>

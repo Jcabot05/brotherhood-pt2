@@ -66,21 +66,28 @@ export default function FormularioCita({
 
             <div className="campo">
                 <label>Horario</label>
-                <div className="horarios">
-                    {horarios.map(horario => (
-                        <button
-                            key={horario.inicio}
-                            type="button"
-                            className={`horario ${
-                                elegido === horario.inicio ? 'elegido' : ''
-                            }`}
-                            onClick={() => onElegir(horario.inicio)}
-                        >
-                            {horario.etiqueta}
-                        </button>
-                    ))}
-                </div>
-                <p className="ayuda">{ayuda}</p>
+                {horarios.length > 0 ? (
+                    <>
+                        <div className="horarios">
+                            {horarios.map(horario => (
+                                <button
+                                    key={horario.inicio}
+                                    type="button"
+                                    aria-pressed={elegido === horario.inicio}
+                                    className={`horario ${
+                                        elegido === horario.inicio ? 'elegido' : ''
+                                    }`}
+                                    onClick={() => onElegir(horario.inicio)}
+                                >
+                                    {horario.etiqueta}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="ayuda">{ayuda}</p>
+                    </>
+                ) : (
+                    <p className="horarios-vacio">{ayuda}</p>
+                )}
             </div>
 
             <button className="boton" disabled={!elegido || enviando}>

@@ -10,3 +10,5 @@ node_modules/
 cliente/dist/
 static_build/
 .vscode/
+# Lleva hashes de contraseñas de las cuentas retiradas.
+db/respaldo_datos_prueba.sql

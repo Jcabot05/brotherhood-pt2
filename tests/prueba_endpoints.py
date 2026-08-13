@@ -13,6 +13,14 @@ Uso:
 
 Variables de entorno:
     ADMIN_CORREO, ADMIN_CONTRASENA   credenciales de la cuenta administradora
+
+El recorrido escribe en la base a la que apunte la API. Su limpieza no
+alcanza a todo lo que crea, así que una corrida interrumpida deja cuentas,
+barberos y citas de prueba. Para retirarlos está
+db/limpieza_datos_prueba.sql.
+
+Las reglas del horario de atención se comprueban aparte, en
+apps/citas/tests.py, que no toca la base de datos.
 """
 
 import os

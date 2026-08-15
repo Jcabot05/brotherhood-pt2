@@ -190,11 +190,11 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-    # Un año, con los subdominios incluidos: el navegador recuerda que este
-    # sitio sólo se visita por HTTPS y deja de intentar la primera petición en
-    # claro. Conviene desplegar antes con un plazo corto y ampliarlo después,
-    # porque hasta que expire no hay forma de volver atrás.
-    SECURE_HSTS_SECONDS = 31536000
+    # El navegador recuerda durante este plazo que el sitio sólo se visita por
+    # HTTPS y deja de intentar la primera petición en claro. Se despliega con
+    # una hora y se amplía a un año (31536000) cuando el dominio esté estable:
+    # hasta que el plazo expire no hay forma de volver atrás desde el servidor.
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SEGUNDOS", "3600"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 

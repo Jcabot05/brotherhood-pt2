@@ -311,11 +311,53 @@ protección CSRF explícita.
 
 ## Pruebas
 
+Las reglas del horario de atención (RN-21 a RN-23) se comprueban sin base de datos:
+
+```bash
+python manage.py test apps.citas
+```
+
+El recorrido completo sobre la API en marcha escribe en la base a la que ésta apunte:
+
 ```bash
 python tests/prueba_endpoints.py http://127.0.0.1:8000
 ```
 
-Sin argumento, las pruebas corren contra la API local.
+Sin argumento, corre contra la API local.
+
+## Despliegue
+
+La aplicación se publica en Railway, que compila el cliente y arranca la API en un mismo
+servicio. `nixpacks.toml` declara los dos lenguajes y el orden de la compilación; `railway.json`
+fija la comprobación de vida sobre `/salud`.
+
+Ese orden no es intercambiable: `npm run build` deja el cliente en `static_build/`, y
+`collectstatic` sólo recoge sus archivos si ese directorio ya existe.
+
+Variables que cambian respecto al entorno local:
+
+| Variable | Valor en producción | Consecuencia de omitirla |
+|---|---|---|
+| `DJANGO_DEBUG` | `false` | Se exponen trazas internas ante cualquier error |
+| `DJANGO_HOSTS_PERMITIDOS` | el dominio del despliegue | Django responde 400 a toda petición |
+| `COOKIE_SEGURA` | `true` | La sesión no viaja y el acceso falla |
+| `DJANGO_SECRET_KEY`, `JWT_SECRETO` | valores nuevos | Se comparten secretos con el entorno local |
+
+El resto se documenta en `.env.example`.
+
+La base de datos **no se migra**: la aplicación se conecta al mismo proyecto de Supabase. Los
+modelos declaran `managed = False` y el esquema lo crea `db/schema.sql`, de modo que
+`manage.py migrate` no debe ejecutarse en ninguna fase del despliegue.
+
+Para reproducir en local lo que hace la plataforma:
+
+```bash
+cd cliente && npm ci && npm run build && cd ..
+DJANGO_DEBUG=false DJANGO_REDIRIGIR_A_HTTPS=false python manage.py collectstatic --noinput
+DJANGO_DEBUG=false DJANGO_REDIRIGIR_A_HTTPS=false gunicorn config.wsgi:application -b 127.0.0.1:8001
+```
+
+`DJANGO_REDIRIGIR_A_HTTPS=false` hace falta sólo en local, donde no hay certificado.
 
 ## Aislamiento de la base de datos
 

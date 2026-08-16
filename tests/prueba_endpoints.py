@@ -13,11 +13,20 @@ Uso:
 
 Variables de entorno:
     ADMIN_CORREO, ADMIN_CONTRASENA   credenciales de la cuenta administradora
+
+El recorrido escribe en la base a la que apunte la API. Su limpieza no
+alcanza a todo lo que crea, así que una corrida interrumpida deja cuentas,
+barberos y citas de prueba. Para retirarlos está
+db/limpieza_datos_prueba.sql.
+
+Las reglas del horario de atención se comprueban aparte, en
+apps/citas/tests.py, que no toca la base de datos.
 """
 
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 from dotenv import load_dotenv
@@ -29,6 +38,9 @@ BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
 # Las credenciales no se versionan: se leen del entorno o del archivo .env.
 ADMIN_CORREO = os.getenv("ADMIN_CORREO", "")
 ADMIN_CONTRASENA = os.getenv("ADMIN_CONTRASENA", "")
+
+# Huso en que la barbería define su horario de atención (RN-21 a RN-23).
+ZONA_BARBERIA = ZoneInfo(os.getenv("ZONA_HORARIA", "America/Guayaquil"))
 
 resultados: list[tuple[str, str, bool, str]] = []
 
@@ -88,9 +100,22 @@ def verificar(requisito: str, descripcion: str, esperado: int, respuesta: httpx.
 
 def main() -> int:
     cliente = httpx.Client(base_url=BASE_URL, timeout=30)
-    horario = (datetime.now(timezone.utc) + timedelta(days=3)).replace(
-        minute=0, second=0, microsecond=0
-    )
+
+    # Se ancla a una hora fija del horario de atención en lugar de partir de
+    # la hora actual. Tomar `now()` hacía que el resultado dependiera del
+    # momento en que se lanzaran las pruebas: ejecutarlas por la tarde
+    # colocaba la reprogramación (+3 h) fuera del horario y la rechazaba con
+    # un 422 correcto, que aquí se leía como un fallo.
+    #
+    # Las 10:00 locales dejan margen para las tres horas que suma la prueba de
+    # reprogramación sin llegar al cierre. El lunes evita el domingo, que no
+    # es laborable (RN-21).
+    manana = datetime.now(ZONA_BARBERIA) + timedelta(days=3)
+    while manana.weekday() != 0:
+        manana += timedelta(days=1)
+    horario = manana.replace(
+        hour=10, minute=0, second=0, microsecond=0
+    ).astimezone(timezone.utc)
 
     # La administración del catálogo exige rol administrador (RN-04).
     admin = {"Authorization": f"Bearer {token_de_administrador(cliente)}"}
@@ -200,19 +225,24 @@ def main() -> int:
     )
     id_cita = r.json()["id_cita"]
 
-    verificar(
-        "RN-02",
-        "Rechazar una cita sin token de acceso",
-        401,
-        cliente.post(
-            "/citas/",
-            json={
-                "id_barbero": id_barbero,
-                "id_servicio": id_servicio,
-                "fecha_hora": (horario + timedelta(days=1)).isoformat(),
-            },
-        ),
-    )
+    # Desde que la sesión viaja en cookie httpOnly, omitir la cabecera Bearer
+    # ya no basta para simular una petición anónima: `httpx.Client` conserva
+    # las cookies que devolvió el registro y las reenvía sola. La petición se
+    # hace con un cliente limpio, sin cookies ni cabeceras.
+    with httpx.Client(base_url=str(cliente.base_url), timeout=20) as anonimo:
+        verificar(
+            "RN-02",
+            "Rechazar una cita sin token de acceso",
+            401,
+            anonimo.post(
+                "/citas/",
+                json={
+                    "id_barbero": id_barbero,
+                    "id_servicio": id_servicio,
+                    "fecha_hora": (horario + timedelta(days=1)).isoformat(),
+                },
+            ),
+        )
 
     verificar(
         "RF-05",

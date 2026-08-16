@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.py[cod]
+.env
+node_modules
+cliente/node_modules
+static_build
+staticfiles
+.DS_Store
+.vscode
+docs
+tests

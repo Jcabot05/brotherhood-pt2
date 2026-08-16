@@ -1,11 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "buildCommand": "pip install -r requirements.txt && npm run build"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "preDeployCommand": "python manage.py collectstatic --noinput",
-    "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2",
     "healthcheckPath": "/salud",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

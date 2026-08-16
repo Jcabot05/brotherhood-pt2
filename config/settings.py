@@ -29,11 +29,12 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-# Railway asigna un subdominio propio a cada despliegue y su comprobación de
-# vida no llega con el dominio público. Se admite el comodín de la plataforma
-# para que ni esa comprobación ni un cambio de subdominio devuelvan un 400.
+# Railway asigna un subdominio propio a cada despliegue, y su comprobación de
+# vida no usa el dominio público: llega por la red interna con un nombre
+# distinto. Sin estos tres, esa comprobación recibe un 400 y el despliegue se
+# da por fallido aunque la aplicación esté sirviendo con normalidad.
 if not DEBUG:
-    ALLOWED_HOSTS.append(".up.railway.app")
+    ALLOWED_HOSTS += [".up.railway.app", ".railway.app", ".railway.internal"]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",

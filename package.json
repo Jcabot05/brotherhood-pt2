@@ -1,0 +1,12 @@
+{
+  "name": "brotherhood-pt2",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Marca la presencia de Node para que la plataforma de despliegue lo instale junto a Python: el cliente de React vive en cliente/ y su compilación forma parte del build.",
+  "scripts": {
+    "build": "npm ci --prefix cliente && npm run build --prefix cliente"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

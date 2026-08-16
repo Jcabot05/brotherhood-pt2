@@ -29,6 +29,12 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Railway asigna un subdominio propio a cada despliegue y su comprobación de
+# vida no llega con el dominio público. Se admite el comodín de la plataforma
+# para que ni esa comprobación ni un cambio de subdominio devuelvan un 400.
+if not DEBUG:
+    ALLOWED_HOSTS.append(".up.railway.app")
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
@@ -164,7 +170,14 @@ CORS_ALLOWED_ORIGINS = [
 ]
 # Imprescindible para que el navegador envíe la cookie de sesión.
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS)
+
+# El subdominio del despliegue se admite explícitamente: Django exige que el
+# origen de una petición con cookie figure en esta lista, y el de Railway no
+# se conoce hasta que la plataforma lo asigna.
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS.append("https://*.up.railway.app")
 
 
 # --- Internacionalización --------------------------------------------------

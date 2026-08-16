@@ -327,29 +327,46 @@ Sin argumento, corre contra la API local.
 
 ## Despliegue
 
-La aplicación se publica en Railway, que compila el cliente y arranca la API en un mismo
-servicio. `nixpacks.toml` declara los dos lenguajes y el orden de la compilación; `railway.json`
-fija la comprobación de vida sobre `/salud`.
+La aplicación se publica en Railway desde la rama `produccion`, en un servicio conectado al
+repositorio de GitHub. Un mismo servicio compila el cliente y atiende la API.
 
-Ese orden no es intercambiable: `npm run build` deja el cliente en `static_build/`, y
-`collectstatic` sólo recoge sus archivos si ese directorio ya existe.
+### Configuración del servicio
 
-Variables que cambian respecto al entorno local:
+| Campo | Valor |
+|---|---|
+| Rama | `produccion` |
+| Custom Build Command | `pip install -r requirements.txt && npm ci --prefix cliente && npm run build --prefix cliente` |
+| Pre-deploy Step | `python manage.py collectstatic --noinput` |
+| Custom Start Command | `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2` |
+
+El orden del build no es intercambiable: `npm run build` deja el cliente en `static_build/`, y
+`collectstatic` sólo recoge sus archivos si ese directorio ya existe. Invertirlos no da error;
+sencillamente no recogería nada.
+
+El Pre-deploy **no ejecuta `migrate` ni `createsuperuser`**. La base es externa y sus tablas las
+crea `db/schema.sql`, de modo que los modelos declaran `managed = False`: una migración
+escribiría sobre datos en uso. La creación de un superusuario tampoco aplica, porque el proyecto
+no instala `django.contrib.auth` y resuelve la autenticación por su cuenta.
+
+### Variables de entorno
 
 | Variable | Valor en producción | Consecuencia de omitirla |
 |---|---|---|
+| `DATABASE_URL` | la cadena de Supabase | El servicio no arranca |
 | `DJANGO_DEBUG` | `false` | Se exponen trazas internas ante cualquier error |
-| `DJANGO_HOSTS_PERMITIDOS` | el dominio del despliegue | Django responde 400 a toda petición |
+| `DJANGO_HOSTS_PERMITIDOS` | el dominio asignado | Django responde 400 a toda petición |
 | `COOKIE_SEGURA` | `true` | La sesión no viaja y el acceso falla |
 | `DJANGO_SECRET_KEY`, `JWT_SECRETO` | valores nuevos | Se comparten secretos con el entorno local |
 
-El resto se documenta en `.env.example`.
+El resto se documenta en `.env.example`. Con `DJANGO_DEBUG=false`, la configuración añade sola
+`.up.railway.app` a los dominios admitidos y `https://*.up.railway.app` a los orígenes de
+confianza, porque el subdominio no se conoce hasta que la plataforma lo asigna.
 
-La base de datos **no se migra**: la aplicación se conecta al mismo proyecto de Supabase. Los
-modelos declaran `managed = False` y el esquema lo crea `db/schema.sql`, de modo que
-`manage.py migrate` no debe ejecutarse en ninguna fase del despliegue.
+El dominio público se genera en **Settings → Networking**.
 
-Para reproducir en local lo que hace la plataforma:
+### Comprobación en local
+
+Para reproducir lo que hace la plataforma:
 
 ```bash
 cd cliente && npm ci && npm run build && cd ..
